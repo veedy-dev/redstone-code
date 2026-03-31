@@ -1,9 +1,3 @@
-import {
-  type ClaudeForChromeContext,
-  createClaudeForChromeMcpServer,
-  type Logger,
-  type PermissionMode,
-} from '@ant/claude-for-chrome-mcp'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { format } from 'util'
 import { shutdownDatadog } from '../../services/analytics/datadog.js'
@@ -20,6 +14,7 @@ import { logForDebugging } from '../debug.js'
 import { isEnvTruthy } from '../envUtils.js'
 import { sideQuery } from '../sideQuery.js'
 import { getAllSocketPaths, getSecureSocketPath } from './common.js'
+import { importClaudeForChromePackage } from './package.js'
 
 const EXTENSION_DOWNLOAD_URL = 'https://claude.ai/chrome'
 const BUG_REPORT_URL =
@@ -38,6 +33,8 @@ const PERMISSION_MODES: readonly PermissionMode[] = [
   'skip_all_permission_checks',
   'follow_a_plan',
 ]
+
+type PermissionMode = (typeof PERMISSION_MODES)[number]
 
 function isPermissionMode(raw: string): raw is PermissionMode {
   return PERMISSION_MODES.some(m => m === raw)
@@ -84,7 +81,7 @@ function isLocalBridge(): boolean {
  */
 export function createChromeContext(
   env?: Record<string, string>,
-): ClaudeForChromeContext {
+) {
   const logger = new DebugLogger()
   const chromeBridgeUrl = getChromeBridgeUrl()
   logger.info(`Bridge URL: ${chromeBridgeUrl ?? 'none (using native socket)'}`)
@@ -249,6 +246,7 @@ export async function runClaudeInChromeMcpServer(): Promise<void> {
   enableConfigs()
   initializeAnalyticsSink()
   const context = createChromeContext()
+  const { createClaudeForChromeMcpServer } = await importClaudeForChromePackage()
 
   const server = createClaudeForChromeMcpServer(context)
   const transport = new StdioServerTransport()
@@ -274,7 +272,7 @@ export async function runClaudeInChromeMcpServer(): Promise<void> {
   logForDebugging('[Claude in Chrome] MCP server started')
 }
 
-class DebugLogger implements Logger {
+class DebugLogger {
   silly(message: string, ...args: unknown[]): void {
     logForDebugging(format(message, ...args), { level: 'debug' })
   }
