@@ -278,7 +278,10 @@ export function LogoV2(): React.ReactNode {
   )
 
   const versionText = (
-    <Text dimColor>v{version}</Text>
+    <>
+      <Text>{' '}</Text>
+      <Text dimColor>v{version}</Text>
+    </>
   )
 
   const infoTable = (
