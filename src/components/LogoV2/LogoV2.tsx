@@ -350,7 +350,6 @@ export function LogoV2(): React.ReactNode {
     >
       {textArt}
       {titleRow}
-      {welcomeRow}
       {versionText}
       <Text>{' '}</Text>
       {infoTable}
