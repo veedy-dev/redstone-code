@@ -24,12 +24,46 @@ function Write-Fail  { param([string]$Msg) Write-Host "[x] $Msg" -ForegroundColo
 
 function Show-Header {
     Write-Host ''
-    Write-Host '                _     _                                      _'             -ForegroundColor Cyan
-    Write-Host '  _ __ ___  __| |___| |_ ___  _ __   ___        ___ ___   __| | ___'        -ForegroundColor Cyan
-    Write-Host ' | ''__/ _ \/ _` / __| __/ _ \| ''_ \ / _ \_____ / __/ _ \ / _` |/ _ \'     -ForegroundColor Cyan
-    Write-Host ' | | |  __/ (_| \__ \ || (_) | | | |  __/_____| (_| (_) | (_| |  __/'       -ForegroundColor Cyan
-    Write-Host ' |_|  \___|\__,_|___/\__\___/|_| |_|\___|      \___\___/ \__,_|\___|'       -ForegroundColor Cyan
+    Write-Host '                                           --------------'                       -ForegroundColor Red
+    Write-Host '                                           --------------'                       -ForegroundColor Red
+    Write-Host '                                           --------------'                       -ForegroundColor Red
+    Write-Host '                                      +++++--------------+++++'                  -ForegroundColor Red
+    Write-Host '                                     -------------××××××-------'                  -ForegroundColor Red
+    Write-Host '                                     -------------××××××-------'                  -ForegroundColor Red
+    Write-Host '                                     -------------××××××-------'                  -ForegroundColor Red
+    Write-Host '                               -------××××××××××××××××××-++++++++++++'            -ForegroundColor Red
+    Write-Host '                               -------×××××××÷÷÷÷×××××××-++++++++++++'           -ForegroundColor Red
+    Write-Host '                               -------×××××××÷÷÷÷×××××××-++++++++++++'           -ForegroundColor Red
+    Write-Host '                         -------------××××××××××××××××××-------++++++++++++'      -ForegroundColor Red
+    Write-Host '                        +------×××××××××÷×××××××××------×××××××+++++++++++++'     -ForegroundColor Red
+    Write-Host '                        +------××××××××÷÷÷÷×××××××------××÷÷÷××+++++++++++++'    -ForegroundColor Red
+    Write-Host '                        -------××××××××÷××××××××××------××××××-+++++++++++++'     -ForegroundColor Red
+    Write-Host '                  -------×××××××××××××××××××××××××××××××-++++++------+++++++++++++'  -ForegroundColor Red
+    Write-Host '                  -------××××××××××××××××××××÷÷÷÷×××××××-+++++-------+++++++++++++'  -ForegroundColor Red
+    Write-Host '                  -------×××××××××××××××××××××÷÷××××××××-+++++-------+++++++++++++'  -ForegroundColor Red
+    Write-Host '            -------------×××××××××××××------------××××××-------------------+++++++++++++'  -ForegroundColor Red
+    Write-Host '            -------------××××××××××××-------++++++××××××-------+++++-××××××+++++++++++++'  -ForegroundColor Red
+    Write-Host '            -------------×÷÷÷÷×××××××-------++++++××÷÷÷×-------+++++-××××××+++++++++++++'  -ForegroundColor Red
+    Write-Host '            -------------××××××××××××-------++++++××÷÷××-------+++++-××××××+++++++++++++'  -ForegroundColor Red
+    Write-Host '            -------××××××------×××××××××××××××××××------+++++++++++++------+++++++++++++'  -ForegroundColor Red
+    Write-Host '            -------××××××------××××××××÷÷÷÷×××××××------+++++++++++++------+++++++++++++'  -ForegroundColor Red
+    Write-Host '            -------××××××------×××××××÷÷÷÷÷×××××××------+++++++++++++------+++++++++++++'  -ForegroundColor Red
+    Write-Host '            +++++++------×××××××××××××××××××-----------+-------++++++++--+++++++++++++++'  -ForegroundColor Red
+    Write-Host '            +++++++++++++×××××××××××××××××××------++++++××××××-+++++++++++++++++++++++++'  -ForegroundColor Red
+    Write-Host '            +++++++++++++×××××××××××××××××××------++++++××××××-+++++++++++++++++++++++++'  -ForegroundColor Red
+    Write-Host '            +++++++++++++×××××××××××××××××××------++++++××××××-+++++++++++++++++++++++++'  -ForegroundColor Red
+    Write-Host '                  +++++++++++++××××××-------++++++------++++++++++++++++++++++++++'        -ForegroundColor Red
+    Write-Host '                  +++++++++++++××××××-------++++++------++++++++++++++++++++++++++'        -ForegroundColor Red
+    Write-Host '                  +++++++++++++××××××-------++++++------++++++++++++++++++++++++++'        -ForegroundColor Red
+    Write-Host '                   ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'         -ForegroundColor Red
+    Write-Host '                        ++++++++++++++++++++++++++++++++++++++++++++++++++++'              -ForegroundColor Red
+    Write-Host '                        ++++++++++++++++++++++++++++++++++++++++++++++++++++'              -ForegroundColor Red
+    Write-Host '                         +++++++++++++++++++++++++++++++++++++++++++++++++++'              -ForegroundColor Red
+    Write-Host '                                     ++++++++++++++++++++++++++'                          -ForegroundColor Red
+    Write-Host '                                     ++++++++++++++++++++++++++'                          -ForegroundColor Red
+    Write-Host '                                     ++++++++++++++++++++++++++'                          -ForegroundColor Red
     Write-Host ''
+    Write-Host '  redstone-code' -ForegroundColor White
     Write-Host '  A cleaner Claude Code' -ForegroundColor DarkGray
     Write-Host ''
 }
