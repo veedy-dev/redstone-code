@@ -26,6 +26,7 @@ type Props = {
   startingMessage?: string;
   mode?: 'login' | 'setup-token';
   forceLoginMethod?: 'claudeai' | 'console';
+  onTextInputActive?: (active: boolean) => void;
 };
 type OAuthStatus = {
   state: 'idle';
@@ -63,7 +64,8 @@ export function ConsoleOAuthFlow({
   onDone,
   startingMessage,
   mode = 'login',
-  forceLoginMethod: forceLoginMethodProp
+  forceLoginMethod: forceLoginMethodProp,
+  onTextInputActive
 }: Props): React.ReactNode {
   const settings = getSettings_DEPRECATED() || {};
   const forceLoginMethod = forceLoginMethodProp ?? settings.forceLoginMethod;
@@ -332,6 +334,11 @@ export function ConsoleOAuthFlow({
       oauthService.cleanup();
     };
   }, [oauthService]);
+  useEffect(() => {
+    if (onTextInputActive) {
+      onTextInputActive(oauthStatus.state === 'provider_setup');
+    }
+  }, [oauthStatus.state, onTextInputActive]);
   return <Box flexDirection="column" gap={1}>
       {oauthStatus.state === 'waiting_for_login' && showPastePrompt && <Box flexDirection="column" key="urlToCopy" gap={1} paddingBottom={1}>
           <Box paddingX={1}>
@@ -459,6 +466,10 @@ function OAuthStatusMessage(t0) {
           value: "console"
         });
         t6.push({
+          label: <Text>3rd-party platform ·{" "}<Text dimColor={true}>Amazon Bedrock, Microsoft Foundry, or Vertex AI</Text>{"\n"}</Text>,
+          value: "platform"
+        });
+        t6.push({
           label: <Text>Custom provider ·{" "}<Text dimColor={true}>{_hasProfiles ? "Add new Anthropic-compatible endpoint" : "Anthropic-compatible endpoint (e.g., MiniMax)"}</Text>{"\n"}</Text>,
           value: "custom_provider"
         });
@@ -477,6 +488,11 @@ function OAuthStatusMessage(t0) {
                 applyProviderProfile(_selectedProfile);
                 updateProfileLastUsed(_selectedProfile.id);
                 onDone();
+                return;
+              }
+              if (value_0 === "platform") {
+                logEvent("tengu_oauth_platform_selected", {});
+                setOAuthStatus({ state: "platform_setup" });
                 return;
               }
               if (value_0 === "custom_provider") {

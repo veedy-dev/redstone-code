@@ -58,8 +58,9 @@ export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXComma
   }} />;
 }
 export function Login(props) {
-  const $ = _c(12);
+  const $ = _c(16);
   const mainLoopModel = useMainLoopModel();
+  const [textInputActive, setTextInputActive] = React.useState(false);
   let t0;
   if ($[0] !== mainLoopModel || $[1] !== props) {
     t0 = () => props.onDone(false, mainLoopModel);
@@ -79,22 +80,25 @@ export function Login(props) {
     t1 = $[5];
   }
   let t2;
-  if ($[6] !== props.startingMessage || $[7] !== t1) {
-    t2 = <ConsoleOAuthFlow onDone={t1} startingMessage={props.startingMessage} />;
+  if ($[6] !== props.startingMessage || $[7] !== t1 || $[8] !== setTextInputActive) {
+    t2 = <ConsoleOAuthFlow onDone={t1} startingMessage={props.startingMessage} onTextInputActive={setTextInputActive} />;
     $[6] = props.startingMessage;
     $[7] = t1;
-    $[8] = t2;
+    $[8] = setTextInputActive;
+    $[9] = t2;
   } else {
-    t2 = $[8];
+    t2 = $[9];
   }
+  const t3_isCancelActive = !textInputActive;
   let t3;
-  if ($[9] !== t0 || $[10] !== t2) {
-    t3 = <Dialog title="Login" onCancel={t0} color="permission" inputGuide={_temp}>{t2}</Dialog>;
-    $[9] = t0;
-    $[10] = t2;
-    $[11] = t3;
+  if ($[10] !== t0 || $[11] !== t2 || $[12] !== t3_isCancelActive) {
+    t3 = <Dialog title="Login" onCancel={t0} color="permission" inputGuide={_temp} isCancelActive={t3_isCancelActive}>{t2}</Dialog>;
+    $[10] = t0;
+    $[11] = t2;
+    $[12] = t3_isCancelActive;
+    $[13] = t3;
   } else {
-    t3 = $[11];
+    t3 = $[13];
   }
   return t3;
 }
