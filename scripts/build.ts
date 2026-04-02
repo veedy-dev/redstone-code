@@ -69,7 +69,7 @@ function getShortSha(): string {
 }
 
 function getDisplayVersion(baseVersion: string): string {
-  return `${baseVersion} (${getShortSha()})`
+  return `${baseVersion}-${getShortSha()}`
 }
 
 function getVersionChangelog(): string {
