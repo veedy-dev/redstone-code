@@ -485,22 +485,40 @@ export async function installGitCloneUpdate(
     onStep?.('install', 'done')
 
     onStep?.('build', 'start')
+
+    const { renameSync, unlinkSync } = require('fs') as typeof import('fs')
+    const { join, basename } = require('path') as typeof import('path')
+    const binaryName = basename(process.execPath)
+    const binaryPath = join(installDir, binaryName)
+    const oldBinaryPath = binaryPath.replace(/(\.\w+)?$/, '.old$1')
+
+    try { unlinkSync(oldBinaryPath) } catch {}
+
+    let renamed = false
+    try {
+      renameSync(binaryPath, oldBinaryPath)
+      renamed = true
+      logForDebugging(`Renamed running binary: ${binaryName} -> ${basename(oldBinaryPath)}`)
+    } catch (e) {
+      logForDebugging(`Could not rename binary: ${e}`)
+    }
+
     const buildResult = await execFileNoThrowWithCwd(
       'bun',
       ['run', 'build:dev:full'],
       { cwd: installDir, timeout: 120000 },
     )
     if (buildResult.code !== 0) {
-      onStep?.('build', 'skip')
-      logForDebugging(`bun build failed (binary may be locked): ${buildResult.stderr}`)
-      saveGlobalConfig(current => ({
-        ...current,
-        installMethod: 'git-clone',
-        pendingRebuild: true,
-      }))
-      return 'success'
+      if (renamed) {
+        try { renameSync(oldBinaryPath, binaryPath) } catch {}
+      }
+      onStep?.('build', 'fail')
+      logForDebugging(`bun build failed: ${buildResult.stderr}`)
+      return 'install_failed'
     }
     onStep?.('build', 'done')
+
+    try { unlinkSync(oldBinaryPath) } catch {}
 
     saveGlobalConfig(current => ({
       ...current,
