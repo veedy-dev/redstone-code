@@ -109,13 +109,14 @@ for (let i = 0; i < args.length; i += 1) {
 }
 const features = [...featureSet]
 
+const ext = process.platform === 'win32' ? '.exe' : ''
 const outfile = compile
   ? dev
-    ? './dist/cli-dev'
-    : './dist/cli'
+    ? `./dist/cli-dev${ext}`
+    : `./dist/cli${ext}`
   : dev
-    ? './cli-dev'
-    : './cli'
+    ? `./cli-dev${ext}`
+    : `./cli${ext}`
 const buildTime = new Date().toISOString()
 const version = dev ? getDevVersion(pkg.version) : pkg.version
 
@@ -151,7 +152,7 @@ const defines = {
     'This reconstructed source snapshot does not include Anthropic internal issue routing.',
   ),
   'MACRO.VERSION_CHANGELOG': JSON.stringify(
-    dev ? getVersionChangelog() : 'https://github.com/paoloanzn/claude-code',
+    dev ? getVersionChangelog() : 'https://github.com/veedy-dev/redstone-code',
   ),
 } as const
 
@@ -197,7 +198,7 @@ if (proc.exitCode !== 0) {
   process.exit(proc.exitCode ?? 1)
 }
 
-if (existsSync(outfile)) {
+if (existsSync(outfile) && process.platform !== 'win32') {
   chmodSync(outfile, 0o755)
 }
 

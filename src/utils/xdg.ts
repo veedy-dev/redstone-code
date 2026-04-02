@@ -24,34 +24,48 @@ function resolveOptions(options?: XDGOptions): { env: EnvLike; home: string } {
   }
 }
 
+function isWindows(): boolean {
+  return process.platform === 'win32'
+}
+
+function getLocalAppData(env: EnvLike, home: string): string {
+  return env.LOCALAPPDATA ?? join(home, 'AppData', 'Local')
+}
+
 /**
  * Get XDG state home directory
- * Default: ~/.local/state
+ * Default: ~/.local/state (Unix), %LOCALAPPDATA% (Windows)
  * @param options Optional env and homedir overrides for testing
  */
 export function getXDGStateHome(options?: XDGOptions): string {
   const { env, home } = resolveOptions(options)
-  return env.XDG_STATE_HOME ?? join(home, '.local', 'state')
+  if (env.XDG_STATE_HOME) return env.XDG_STATE_HOME
+  if (isWindows()) return getLocalAppData(env, home)
+  return join(home, '.local', 'state')
 }
 
 /**
  * Get XDG cache home directory
- * Default: ~/.cache
+ * Default: ~/.cache (Unix), %LOCALAPPDATA%\cache (Windows)
  * @param options Optional env and homedir overrides for testing
  */
 export function getXDGCacheHome(options?: XDGOptions): string {
   const { env, home } = resolveOptions(options)
-  return env.XDG_CACHE_HOME ?? join(home, '.cache')
+  if (env.XDG_CACHE_HOME) return env.XDG_CACHE_HOME
+  if (isWindows()) return join(getLocalAppData(env, home), 'cache')
+  return join(home, '.cache')
 }
 
 /**
  * Get XDG data home directory
- * Default: ~/.local/share
+ * Default: ~/.local/share (Unix), %LOCALAPPDATA% (Windows)
  * @param options Optional env and homedir overrides for testing
  */
 export function getXDGDataHome(options?: XDGOptions): string {
   const { env, home } = resolveOptions(options)
-  return env.XDG_DATA_HOME ?? join(home, '.local', 'share')
+  if (env.XDG_DATA_HOME) return env.XDG_DATA_HOME
+  if (isWindows()) return getLocalAppData(env, home)
+  return join(home, '.local', 'share')
 }
 
 /**

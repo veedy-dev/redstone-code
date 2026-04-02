@@ -1,34 +1,41 @@
 <p align="center">
-  <img src="assets/screenshot.png" alt="free-code" width="720" />
+  <img src="assets/screenshot.png" alt="redstone-code" width="720" />
 </p>
 
-<h1 align="center">free-code</h1>
+<h1 align="center">redstone-code</h1>
 
 <p align="center">
-  <strong>The free build of Claude Code.</strong><br>
-  All telemetry stripped. All guardrails removed. All experimental features unlocked.<br>
+  <strong>A cleaner Claude Code.</strong><br>
+  No telemetry. No guardrails. All experimental features unlocked.<br>
   One binary, zero callbacks home.
 </p>
 
 <p align="center">
   <a href="#quick-install"><img src="https://img.shields.io/badge/install-one--liner-blue?style=flat-square" alt="Install" /></a>
-  <a href="https://github.com/paoloanzn/free-code/stargazers"><img src="https://img.shields.io/github/stars/paoloanzn/free-code?style=flat-square" alt="Stars" /></a>
-  <a href="https://github.com/paoloanzn/free-code/issues"><img src="https://img.shields.io/github/issues/paoloanzn/free-code?style=flat-square" alt="Issues" /></a>
-  <a href="https://github.com/paoloanzn/free-code/blob/main/FEATURES.md"><img src="https://img.shields.io/badge/features-88%20flags-orange?style=flat-square" alt="Feature Flags" /></a>
-  <a href="#ipfs-mirror"><img src="https://img.shields.io/badge/IPFS-mirrored-teal?style=flat-square" alt="IPFS" /></a>
+  <a href="https://github.com/veedy-dev/redstone-code/stargazers"><img src="https://img.shields.io/github/stars/veedy-dev/redstone-code?style=flat-square" alt="Stars" /></a>
+  <a href="https://github.com/veedy-dev/redstone-code/issues"><img src="https://img.shields.io/github/issues/veedy-dev/redstone-code?style=flat-square" alt="Issues" /></a>
+  <a href="https://github.com/veedy-dev/redstone-code/blob/main/FEATURES.md"><img src="https://img.shields.io/badge/features-88%20flags-orange?style=flat-square" alt="Feature Flags" /></a>
 </p>
 
 ---
 
 ## Quick Install
 
+### macOS / Linux
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/paoloanzn/free-code/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/veedy-dev/redstone-code/main/install.sh | bash
 ```
 
-Checks your system, installs Bun if needed, clones the repo, builds with all experimental features enabled, and symlinks `free-code` on your PATH.
+### Windows (PowerShell)
 
-Then run `free-code` and use the `/login` command to authenticate with your preferred model provider.
+```powershell
+irm https://raw.githubusercontent.com/veedy-dev/redstone-code/main/install.ps1 | iex
+```
+
+Checks your system, installs Bun if needed, clones the repo, builds with all experimental features enabled, and puts `redstone-code` on your PATH.
+
+Then run `redstone-code` and use the `/login` command to authenticate with your preferred model provider.
 
 ---
 
@@ -43,7 +50,6 @@ Then run `free-code` and use the `/login` command to authenticate with your pref
 - [Experimental Features](#experimental-features)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
-- [IPFS Mirror](#ipfs-mirror)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -51,7 +57,7 @@ Then run `free-code` and use the `/login` command to authenticate with your pref
 
 ## What is this
 
-A clean, buildable fork of Anthropic's [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI -- the terminal-native AI coding agent. The upstream source became publicly available on March 31, 2026 through a source map exposure in the npm distribution.
+A clean, buildable fork of Anthropic's [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI -- the terminal-native AI coding agent.
 
 This fork applies three categories of changes on top of that snapshot:
 
@@ -77,7 +83,7 @@ Claude Code ships with 88 feature flags gated behind `bun:bundle` compile-time s
 
 ## Model Providers
 
-free-code supports **five API providers** out of the box. Set the corresponding environment variable to switch providers -- no code changes needed.
+redstone-code supports **five API providers** out of the box. Set the corresponding environment variable to switch providers -- no code changes needed.
 
 ### Anthropic (Direct API) -- Default
 
@@ -101,7 +107,7 @@ Use OpenAI's Codex models for code generation. Requires a Codex subscription.
 
 ```bash
 export CLAUDE_CODE_USE_OPENAI=1
-free-code
+redstone-code
 ```
 
 ### AWS Bedrock
@@ -111,7 +117,7 @@ Route requests through your AWS account via Amazon Bedrock.
 ```bash
 export CLAUDE_CODE_USE_BEDROCK=1
 export AWS_REGION="us-east-1"   # or AWS_DEFAULT_REGION
-free-code
+redstone-code
 ```
 
 Uses your standard AWS credentials (environment variables, `~/.aws/config`, or IAM role). Models are mapped to Bedrock ARN format automatically (e.g., `us.anthropic.claude-opus-4-6-v1`).
@@ -130,7 +136,7 @@ Route requests through your GCP project via Vertex AI.
 
 ```bash
 export CLAUDE_CODE_USE_VERTEX=1
-free-code
+redstone-code
 ```
 
 Uses Google Cloud Application Default Credentials (`gcloud auth application-default login`). Models are mapped to Vertex format automatically (e.g., `claude-opus-4-6@latest`).
@@ -142,7 +148,7 @@ Use Anthropic Foundry for dedicated deployments.
 ```bash
 export CLAUDE_CODE_USE_FOUNDRY=1
 export ANTHROPIC_FOUNDRY_API_KEY="..."
-free-code
+redstone-code
 ```
 
 Supports custom deployment IDs as model names.
@@ -162,7 +168,7 @@ Supports custom deployment IDs as model names.
 ## Requirements
 
 - **Runtime**: [Bun](https://bun.sh) >= 1.3.11
-- **OS**: macOS or Linux (Windows via WSL)
+- **OS**: macOS, Linux, or Windows (native or WSL)
 - **Auth**: An API key or OAuth login for your chosen provider
 
 ```bash
@@ -175,9 +181,10 @@ curl -fsSL https://bun.sh/install | bash
 ## Build
 
 ```bash
-git clone https://github.com/paoloanzn/free-code.git
-cd free-code
-bun build
+git clone https://github.com/veedy-dev/redstone-code.git
+cd redstone-code
+bun install
+bun run build
 ./cli
 ```
 
@@ -325,19 +332,6 @@ src/
 | **Code Search** | ripgrep (bundled) |
 | **Protocols** | MCP, LSP |
 | **APIs** | Anthropic Messages, OpenAI Codex, AWS Bedrock, Google Vertex AI |
-
----
-
-## IPFS Mirror
-
-A full copy of this repository is permanently pinned on IPFS via Filecoin:
-
-| | |
-|---|---|
-| **CID** | `bafybeiegvef3dt24n2znnnmzcud2vxat7y7rl5ikz7y7yoglxappim54bm` |
-| **Gateway** | https://w3s.link/ipfs/bafybeiegvef3dt24n2znnnmzcud2vxat7y7rl5ikz7y7yoglxappim54bm |
-
-If this repo gets taken down, the code lives on.
 
 ---
 
