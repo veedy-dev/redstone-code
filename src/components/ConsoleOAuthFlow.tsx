@@ -18,6 +18,9 @@ import { Select } from './CustomSelect/select.js';
 import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
 import { Spinner } from './Spinner.js';
 import TextInput from './TextInput.js';
+import { ProviderSelectList } from './ProviderSelectList.js';
+import { ProviderSetupForm } from './ProviderSetupForm.js';
+import { getProviderProfiles } from '../utils/providerProfiles.js';
 type Props = {
   onDone(): void;
   startingMessage?: string;
@@ -50,6 +53,10 @@ type OAuthStatus = {
   state: 'error';
   message: string;
   toRetry?: OAuthStatus;
+} | {
+  state: 'provider_select';
+} | {
+  state: 'provider_setup';
 };
 const PASTE_HERE_MSG = 'Paste code here if prompted > ';
 export function ConsoleOAuthFlow({
@@ -437,8 +444,8 @@ function OAuthStatusMessage(t0) {
         let t6;
         if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
           t6 = [t4, t5, {
-            label: <Text>3rd-party platform ·{" "}<Text dimColor={true}>Amazon Bedrock, Microsoft Foundry, or Vertex AI</Text>{"\n"}</Text>,
-            value: "platform"
+            label: <Text>Custom provider ·{" "}<Text dimColor={true}>Anthropic-compatible endpoint (e.g., MiniMax)</Text>{"\n"}</Text>,
+            value: "custom_provider"
           }, {
             label: <Text>OpenAI Codex account ·{" "}<Text dimColor={true}>ChatGPT Plus/Pro subscription</Text>{"\n"}</Text>,
             value: "codex"
@@ -450,11 +457,13 @@ function OAuthStatusMessage(t0) {
         let t7;
         if ($[6] !== setLoginWithClaudeAi || $[7] !== setOAuthStatus || $[8] !== setLoginWithCodex) {
           t7 = <Box><Select options={t6} onChange={value_0 => {
-              if (value_0 === "platform") {
-                logEvent("tengu_oauth_platform_selected", {});
-                setOAuthStatus({
-                  state: "platform_setup"
-                });
+              if (value_0 === "custom_provider") {
+                logEvent("tengu_oauth_custom_provider_selected", {});
+                if (getProviderProfiles().length > 0) {
+                  setOAuthStatus({ state: "provider_select" });
+                } else {
+                  setOAuthStatus({ state: "provider_setup" });
+                }
               } else if (value_0 === "codex") {
                 logEvent("tengu_oauth_codex_selected", {});
                 setLoginWithCodex(true);
@@ -492,6 +501,24 @@ function OAuthStatusMessage(t0) {
         }
         return t8;
       }
+    case "provider_select":
+      return <ProviderSelectList onSelect={(action) => {
+        if (action === 'anthropic') {
+          onDone();
+        } else if (action === 'add_custom') {
+          setOAuthStatus({ state: 'provider_setup' });
+        } else {
+          onDone();
+        }
+      }} />;
+    case "provider_setup":
+      return <ProviderSetupForm onDone={(profile) => {
+        if (profile) {
+          onDone();
+        } else {
+          setOAuthStatus({ state: 'idle' });
+        }
+      }} />;
     case "platform_setup":
       {
         let t1;
