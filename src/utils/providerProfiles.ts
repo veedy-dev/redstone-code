@@ -47,6 +47,7 @@ export function saveProviderProfile(profile: ProviderProfile): void {
 }
 
 export function removeProviderProfile(id: string): void {
+  const wasActive = getActiveProviderProfileId() === id
   saveGlobalConfig(config => {
     const profiles = (config.providerProfiles ?? []).filter(p => p.id !== id)
     const updates: Partial<typeof config> = { providerProfiles: profiles }
@@ -55,6 +56,9 @@ export function removeProviderProfile(id: string): void {
     }
     return { ...config, ...updates }
   })
+  if (wasActive) {
+    restoreStashedEnv()
+  }
 }
 
 export function stashCurrentEnv(): void {
