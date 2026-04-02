@@ -11,7 +11,8 @@ import { getAnthropicApiKeyWithSource, getApiKeyFromConfigOrMacOSKeychain, getAu
 import type { AgentDefinitionsResult } from '../tools/AgentTool/loadAgentsDir.js';
 import { getAgentDescriptionsTotalTokens, AGENT_DESCRIPTIONS_THRESHOLD } from './statusNoticeHelpers.js';
 import { isSupportedJetBrainsTerminal, toIDEDisplayName, getTerminalIdeType } from './ide.js';
-import { isJetBrainsPluginInstalledCachedSync } from './jetbrains.js';
+import { isJetBrainsPluginInstalledCachedSync } from './jetbrains.js'
+import { isCustomProviderActive } from './providerProfiles.js';
 
 // Types
 export type StatusNoticeType = 'warning' | 'info';
@@ -54,6 +55,7 @@ const claudeAiSubscriberExternalTokenNotice: StatusNoticeDefinition = {
   id: 'claude-ai-external-token',
   type: 'warning',
   isActive: () => {
+    if (isCustomProviderActive()) return false
     const authTokenInfo = getAuthTokenSource();
     return isClaudeAISubscriber() && (authTokenInfo.source === 'ANTHROPIC_AUTH_TOKEN' || authTokenInfo.source === 'apiKeyHelper');
   },
@@ -73,6 +75,7 @@ const apiKeyConflictNotice: StatusNoticeDefinition = {
   id: 'api-key-conflict',
   type: 'warning',
   isActive: () => {
+    if (isCustomProviderActive()) return false
     const {
       source: apiKeySource
     } = getAnthropicApiKeyWithSource({
@@ -99,6 +102,7 @@ const bothAuthMethodsNotice: StatusNoticeDefinition = {
   id: 'both-auth-methods',
   type: 'warning',
   isActive: () => {
+    if (isCustomProviderActive()) return false
     const {
       source: apiKeySource
     } = getAnthropicApiKeyWithSource({

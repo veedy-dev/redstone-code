@@ -60,6 +60,7 @@ import { InfoTable } from './InfoTable.js'
 import { getAuthTokenSource } from '../../utils/auth.js'
 import { getDirectConnectServerUrl } from '../../bootstrap/state.js'
 import { getAPIProvider } from '../../utils/model/providers.js'
+import { getActiveProviderProfile } from '../../utils/providerProfiles.js'
 
 const ChannelsNoticeModule =
   feature('KAIROS') || feature('KAIROS_CHANNELS')
@@ -78,6 +79,8 @@ const REDSTONE_TEXT = [
 const TEXT_ART_WIDTH = 53
 
 function getProviderName(): string {
+  const activeProfile = getActiveProviderProfile()
+  if (activeProfile) return activeProfile.name
   const provider = getAPIProvider()
   switch (provider) {
     case 'firstParty': return 'Anthropic'

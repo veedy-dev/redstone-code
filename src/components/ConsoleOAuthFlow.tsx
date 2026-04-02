@@ -5,7 +5,7 @@ import { installOAuthTokens } from '../cli/handlers/auth.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { setClipboard } from '../ink/termio/osc.js';
 import { useTerminalNotification } from '../ink/useTerminalNotification.js';
-import { Box, Link, Text } from '../ink.js';
+import { Box, Link, Text, useInput } from '../ink.js';
 import { useKeybinding } from '../keybindings/useKeybinding.js';
 import { getSSLErrorHint } from '../services/api/errorUtils.js';
 import { sendNotification } from '../services/notifier.js';
@@ -18,11 +18,17 @@ import { Select } from './CustomSelect/select.js';
 import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
 import { Spinner } from './Spinner.js';
 import TextInput from './TextInput.js';
+import { ProviderSelectList } from './ProviderSelectList.js';
+import { ProviderSetupForm } from './ProviderSetupForm.js';
+import { getProviderProfiles, getActiveProviderProfileId, applyProviderProfile, deactivateProviderProfile, updateProfileLastUsed, removeProviderProfile } from '../utils/providerProfiles.js';
 type Props = {
   onDone(): void;
   startingMessage?: string;
   mode?: 'login' | 'setup-token';
   forceLoginMethod?: 'claudeai' | 'console';
+  onTextInputActive?: (active: boolean) => void;
+  onFocusedProfileId?: (id: string | null) => void;
+  onConfirmingDelete?: (confirming: boolean) => void;
 };
 type OAuthStatus = {
   state: 'idle';
@@ -50,13 +56,20 @@ type OAuthStatus = {
   state: 'error';
   message: string;
   toRetry?: OAuthStatus;
+} | {
+  state: 'provider_select';
+} | {
+  state: 'provider_setup';
 };
 const PASTE_HERE_MSG = 'Paste code here if prompted > ';
 export function ConsoleOAuthFlow({
   onDone,
   startingMessage,
   mode = 'login',
-  forceLoginMethod: forceLoginMethodProp
+  forceLoginMethod: forceLoginMethodProp,
+  onTextInputActive,
+  onFocusedProfileId,
+  onConfirmingDelete
 }: Props): React.ReactNode {
   const settings = getSettings_DEPRECATED() || {};
   const forceLoginMethod = forceLoginMethodProp ?? settings.forceLoginMethod;
@@ -92,6 +105,44 @@ export function ConsoleOAuthFlow({
   const [showPastePrompt, setShowPastePrompt] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
   const textInputColumns = useTerminalSize().columns - PASTE_HERE_MSG.length - 1;
+
+  const [focusedValue, setFocusedValue] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  useInput((input, key, event) => {
+    if (pendingDeleteId) {
+      event.stopImmediatePropagation();
+      if (input === 'y' || input === 'Y') {
+        removeProviderProfile(pendingDeleteId);
+        setFocusedValue(null);
+        setPendingDeleteId(null);
+      } else if (input === 'n' || input === 'N' || key.escape) {
+        setPendingDeleteId(null);
+      }
+      return;
+    }
+    if (key.delete && focusedValue) {
+      const profiles = getProviderProfiles();
+      if (profiles.some(p => p.id === focusedValue)) {
+        event.stopImmediatePropagation();
+        setPendingDeleteId(focusedValue);
+      }
+    }
+  }, { isActive: oauthStatus.state === 'idle' });
+
+  useEffect(() => {
+    if (onFocusedProfileId) {
+      const profiles = getProviderProfiles();
+      const isProfile = focusedValue ? profiles.some(p => p.id === focusedValue) : false;
+      onFocusedProfileId(isProfile ? focusedValue : null);
+    }
+  }, [focusedValue, onFocusedProfileId]);
+
+  useEffect(() => {
+    if (onConfirmingDelete) {
+      onConfirmingDelete(pendingDeleteId !== null);
+    }
+  }, [pendingDeleteId, onConfirmingDelete]);
 
   // Log forced login method on mount
   useEffect(() => {
@@ -325,6 +376,11 @@ export function ConsoleOAuthFlow({
       oauthService.cleanup();
     };
   }, [oauthService]);
+  useEffect(() => {
+    if (onTextInputActive) {
+      onTextInputActive(oauthStatus.state === 'provider_setup');
+    }
+  }, [oauthStatus.state, onTextInputActive]);
   return <Box flexDirection="column" gap={1}>
       {oauthStatus.state === 'waiting_for_login' && showPastePrompt && <Box flexDirection="column" key="urlToCopy" gap={1} paddingBottom={1}>
           <Box paddingX={1}>
@@ -357,7 +413,7 @@ export function ConsoleOAuthFlow({
             </Box>
           </Box>}
       <Box paddingLeft={1} flexDirection="column" gap={1}>
-        <OAuthStatusMessage oauthStatus={oauthStatus} mode={mode} startingMessage={startingMessage} forcedMethodMessage={forcedMethodMessage} showPastePrompt={showPastePrompt} pastedCode={pastedCode} setPastedCode={setPastedCode} cursorOffset={cursorOffset} setCursorOffset={setCursorOffset} textInputColumns={textInputColumns} handleSubmitCode={handleSubmitCode} setOAuthStatus={setOAuthStatus} setLoginWithClaudeAi={setLoginWithClaudeAi} setLoginWithCodex={setLoginWithCodex} />
+        <OAuthStatusMessage oauthStatus={oauthStatus} mode={mode} startingMessage={startingMessage} forcedMethodMessage={forcedMethodMessage} showPastePrompt={showPastePrompt} pastedCode={pastedCode} setPastedCode={setPastedCode} cursorOffset={cursorOffset} setCursorOffset={setCursorOffset} textInputColumns={textInputColumns} handleSubmitCode={handleSubmitCode} setOAuthStatus={setOAuthStatus} setLoginWithClaudeAi={setLoginWithClaudeAi} setLoginWithCodex={setLoginWithCodex} onDone={onDone} onFocusProfile={setFocusedValue} pendingDeleteId={pendingDeleteId} />
       </Box>
     </Box>;
 }
@@ -376,6 +432,9 @@ type OAuthStatusMessageProps = {
   setOAuthStatus: (status: OAuthStatus) => void;
   setLoginWithClaudeAi: (value: boolean) => void;
   setLoginWithCodex: (value: boolean) => void;
+  onDone: () => void;
+  onFocusProfile: (value: string | null) => void;
+  pendingDeleteId: string | null;
 };
 function OAuthStatusMessage(t0) {
   const $ = _c(52);
@@ -393,7 +452,10 @@ function OAuthStatusMessage(t0) {
     handleSubmitCode,
     setOAuthStatus,
     setLoginWithClaudeAi,
-    setLoginWithCodex
+    setLoginWithCodex,
+    onDone,
+    onFocusProfile,
+    pendingDeleteId
   } = t0;
   switch (oauthStatus.state) {
     case "idle":
@@ -414,47 +476,74 @@ function OAuthStatusMessage(t0) {
         } else {
           t3 = $[2];
         }
-        let t4;
-        if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
-          t4 = {
-            label: <Text>Claude account with subscription ·{" "}<Text dimColor={true}>Pro, Max, Team, or Enterprise</Text>{false && <Text>{"\n"}<Text color="warning">[ANT-ONLY]</Text>{" "}<Text dimColor={true}>Please use this option unless you need to login to a special org for accessing sensitive data (e.g. customer data, HIPI data) with the Console option</Text></Text>}{"\n"}</Text>,
-            value: "claudeai"
-          };
-          $[3] = t4;
-        } else {
-          t4 = $[3];
+        const _profiles = getProviderProfiles();
+        const _activeProfileId = getActiveProviderProfileId();
+        const _hasProfiles = _profiles.length > 0;
+        const t6 = [];
+        if (_hasProfiles) {
+          t6.push({
+            label: <Text>Anthropic{_activeProfileId === null ? <Text dimColor={true}> (current)</Text> : ""} · <Text dimColor={true}>Default account</Text>{"\n"}</Text>,
+            value: "__anthropic__"
+          });
+          for (const _p of _profiles) {
+            const _isCurrent = _p.id === _activeProfileId;
+            t6.push({
+              label: <Text>{_p.name}{_isCurrent ? <Text dimColor={true}> (current)</Text> : ""}{_p.defaultModel ? <Text> · <Text dimColor={true}>{_p.defaultModel}</Text></Text> : ""}{"\n"}</Text>,
+              value: _p.id
+            });
+          }
+          t6.push({
+            label: <Text dimColor={true}>Set up new login:</Text>,
+            value: "__separator__",
+            disabled: true
+          });
         }
-        let t5;
-        if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-          t5 = {
-            label: <Text>Anthropic Console account ·{" "}<Text dimColor={true}>API usage billing</Text>{"\n"}</Text>,
-            value: "console"
-          };
-          $[4] = t5;
+        if (!_hasProfiles) {
+          t3 = <Text>Select login method:</Text>;
         } else {
-          t5 = $[4];
+          t3 = <Text>Switch provider or login:</Text>;
         }
-        let t6;
-        if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-          t6 = [t4, t5, {
-            label: <Text>3rd-party platform ·{" "}<Text dimColor={true}>Amazon Bedrock, Microsoft Foundry, or Vertex AI</Text>{"\n"}</Text>,
-            value: "platform"
-          }, {
-            label: <Text>OpenAI Codex account ·{" "}<Text dimColor={true}>ChatGPT Plus/Pro subscription</Text>{"\n"}</Text>,
-            value: "codex"
-          }];
-          $[5] = t6;
-        } else {
-          t6 = $[5];
-        }
-        let t7;
-        if ($[6] !== setLoginWithClaudeAi || $[7] !== setOAuthStatus || $[8] !== setLoginWithCodex) {
-          t7 = <Box><Select options={t6} onChange={value_0 => {
+        t6.push({
+          label: <Text>Claude account with subscription ·{" "}<Text dimColor={true}>Pro, Max, Team, or Enterprise</Text>{false && <Text>{"\n"}<Text color="warning">[ANT-ONLY]</Text>{" "}<Text dimColor={true}>Please use this option unless you need to login to a special org for accessing sensitive data (e.g. customer data, HIPI data) with the Console option</Text></Text>}{"\n"}</Text>,
+          value: "claudeai"
+        });
+        t6.push({
+          label: <Text>Anthropic Console account ·{" "}<Text dimColor={true}>API usage billing</Text>{"\n"}</Text>,
+          value: "console"
+        });
+        t6.push({
+          label: <Text>3rd-party platform ·{" "}<Text dimColor={true}>Amazon Bedrock, Microsoft Foundry, or Vertex AI</Text>{"\n"}</Text>,
+          value: "platform"
+        });
+        t6.push({
+          label: <Text>Custom provider ·{" "}<Text dimColor={true}>{_hasProfiles ? "Add new Anthropic-compatible endpoint" : "Anthropic-compatible endpoint (e.g., MiniMax)"}</Text>{"\n"}</Text>,
+          value: "custom_provider"
+        });
+        t6.push({
+          label: <Text>OpenAI Codex account ·{" "}<Text dimColor={true}>ChatGPT Plus/Pro subscription</Text>{"\n"}</Text>,
+          value: "codex"
+        });
+        const t7 = <Box><Select options={t6} onChange={value_0 => {
+              if (value_0 === "__anthropic__") {
+                deactivateProviderProfile();
+                onDone();
+                return;
+              }
+              const _selectedProfile = _profiles.find(p => p.id === value_0);
+              if (_selectedProfile) {
+                applyProviderProfile(_selectedProfile);
+                updateProfileLastUsed(_selectedProfile.id);
+                onDone();
+                return;
+              }
               if (value_0 === "platform") {
                 logEvent("tengu_oauth_platform_selected", {});
-                setOAuthStatus({
-                  state: "platform_setup"
-                });
+                setOAuthStatus({ state: "platform_setup" });
+                return;
+              }
+              if (value_0 === "custom_provider") {
+                logEvent("tengu_oauth_custom_provider_selected", {});
+                setOAuthStatus({ state: "provider_setup" });
               } else if (value_0 === "codex") {
                 logEvent("tengu_oauth_codex_selected", {});
                 setLoginWithCodex(true);
@@ -473,25 +562,29 @@ function OAuthStatusMessage(t0) {
                   setLoginWithClaudeAi(false);
                 }
               }
-            }} /></Box>;
-          $[6] = setLoginWithClaudeAi;
-          $[7] = setOAuthStatus;
-          $[8] = setLoginWithCodex;
-          $[9] = t7;
-        } else {
-          t7 = $[9];
-        }
-        let t8;
-        if ($[10] !== t2 || $[11] !== t7) {
-          t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t2}{t3}{t7}</Box>;
-          $[10] = t2;
-          $[11] = t7;
-          $[12] = t8;
-        } else {
-          t8 = $[12];
-        }
+            }} onFocus={onFocusProfile} /></Box>;
+        const _pendingProfile = pendingDeleteId ? _profiles.find(p => p.id === pendingDeleteId) : null;
+        const t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t2}{t3}{t7}{_pendingProfile && <Text><Text color="red">Delete</Text> "<Text color="cyan">{_pendingProfile.name}</Text>"? (y/n)</Text>}</Box>;
         return t8;
       }
+    case "provider_select":
+      return <ProviderSelectList onSelect={(action) => {
+        if (action === 'anthropic') {
+          onDone();
+        } else if (action === 'add_custom') {
+          setOAuthStatus({ state: 'provider_setup' });
+        } else {
+          onDone();
+        }
+      }} />;
+    case "provider_setup":
+      return <ProviderSetupForm onDone={(profile) => {
+        if (profile) {
+          onDone();
+        } else {
+          setOAuthStatus({ state: 'idle' });
+        }
+      }} />;
     case "platform_setup":
       {
         let t1;

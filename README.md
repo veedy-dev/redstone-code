@@ -2,11 +2,11 @@
   <img src="assets/screenshot.png" alt="redstone-code" width="720" />
 </p>
 
-<h1 align="center">redstone-code</h1>
+<h1 align="center">Redstone Code</h1>
 
 <p align="center">
-  <strong>A cleaner Claude Code.</strong><br>
-  No telemetry. No guardrails. All experimental features unlocked.<br>
+  <strong>An agentic coding CLI, rebuilt from the ground up.</strong><br>
+  Multi-provider support. No telemetry. No guardrails. All experimental features unlocked.<br>
   One binary, zero callbacks home.
 </p>
 
@@ -16,6 +16,16 @@
   <a href="https://github.com/veedy-dev/redstone-code/issues"><img src="https://img.shields.io/github/issues/veedy-dev/redstone-code?style=flat-square" alt="Issues" /></a>
   <a href="https://github.com/veedy-dev/redstone-code/blob/main/FEATURES.md"><img src="https://img.shields.io/badge/features-88%20flags-orange?style=flat-square" alt="Feature Flags" /></a>
 </p>
+
+---
+
+## Highlights
+
+- **Multi-provider hot-swap** -- Switch between Anthropic, MiniMax, OpenAI Codex, AWS Bedrock, Vertex AI, and any Anthropic-compatible endpoint mid-session via `/login`. No restart needed.
+- **Provider profiles** -- Save and manage multiple API providers. Add a custom endpoint once, switch back and forth with one click.
+- **Zero telemetry** -- All outbound analytics, crash reports, and session fingerprinting are removed at build time.
+- **No prompt guardrails** -- Hardcoded refusal patterns and injected restriction overlays are stripped. The model's own safety training still applies.
+- **54 experimental features unlocked** -- Every feature flag that compiles cleanly is enabled in the full build. See [FEATURES.md](FEATURES.md).
 
 ---
 
@@ -35,15 +45,16 @@ irm https://raw.githubusercontent.com/veedy-dev/redstone-code/main/install.ps1 |
 
 Checks your system, installs Bun if needed, clones the repo, builds with all experimental features enabled, and puts `redstone-code` on your PATH.
 
-Then run `redstone-code` and use the `/login` command to authenticate with your preferred model provider.
+Then run `redstone-code` and use the `/login` command to authenticate with your preferred provider.
 
 ---
 
 ## Table of Contents
 
-- [What is this](#what-is-this)
-- [Model Providers](#model-providers)
+- [Highlights](#highlights)
 - [Quick Install](#quick-install)
+- [Model Providers](#model-providers)
+- [Provider Profiles](#provider-profiles)
 - [Requirements](#requirements)
 - [Build](#build)
 - [Usage](#usage)
@@ -55,59 +66,50 @@ Then run `redstone-code` and use the `/login` command to authenticate with your 
 
 ---
 
-## What is this
-
-A clean, buildable fork of Anthropic's [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI -- the terminal-native AI coding agent.
-
-This fork applies three categories of changes on top of that snapshot:
-
-### Telemetry removed
-
-The upstream binary phones home through OpenTelemetry/gRPC, GrowthBook analytics, Sentry error reporting, and custom event logging. In this build:
-
-- All outbound telemetry endpoints are dead-code-eliminated or stubbed
-- GrowthBook feature flag evaluation still works locally (needed for runtime feature gates) but does not report back
-- No crash reports, no usage analytics, no session fingerprinting
-
-### Security-prompt guardrails removed
-
-Anthropic injects system-level instructions into every conversation that constrain Claude's behavior beyond what the model itself enforces. These include hardcoded refusal patterns, injected "cyber risk" instruction blocks, and managed-settings security overlays pushed from Anthropic's servers.
-
-This build strips those injections. The model's own safety training still applies -- this just removes the extra layer of prompt-level restrictions that the CLI wraps around it.
-
-### Experimental features unlocked
-
-Claude Code ships with 88 feature flags gated behind `bun:bundle` compile-time switches. Most are disabled in the public npm release. This build unlocks all 54 flags that compile cleanly. See [Experimental Features](#experimental-features) below, or refer to [FEATURES.md](FEATURES.md) for the full audit.
-
----
-
 ## Model Providers
 
-redstone-code supports **five API providers** out of the box. Set the corresponding environment variable to switch providers -- no code changes needed.
+Redstone Code supports **six provider types** out of the box. Use the `/login` command or set environment variables to switch providers.
 
 ### Anthropic (Direct API) -- Default
 
 Use Anthropic's first-party API directly.
 
-| Model | ID |
-|---|---|
-| Claude Opus 4.6 | `claude-opus-4-6` |
-| Claude Sonnet 4.6 | `claude-sonnet-4-6` |
-| Claude Haiku 4.5 | `claude-haiku-4-5` |
+```bash
+redstone-code
+# Then /login and select "Anthropic Console account"
+```
+
+### Custom Anthropic-Compatible Endpoints
+
+Any provider that implements the Anthropic Messages API format works out of the box. Examples: [MiniMax](https://platform.minimax.io), or any Anthropic-compatible proxy.
+
+```bash
+redstone-code
+# Then /login > "Custom provider" > enter base URL, API key, and model name
+```
+
+Or via environment variables:
+
+```bash
+export ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic"
+export ANTHROPIC_AUTH_TOKEN="your-api-key"
+export ANTHROPIC_MODEL="MiniMax-M2.7"
+redstone-code
+```
 
 ### OpenAI Codex
 
-Use OpenAI's Codex models for code generation. Requires a Codex subscription.
+Use OpenAI's Codex models. Requires a Codex subscription.
 
 | Model | ID |
 |---|---|
-| GPT-5.3 Codex (recommended) | `gpt-5.3-codex` |
 | GPT-5.4 | `gpt-5.4` |
+| GPT-5.3 Codex | `gpt-5.3-codex` |
 | GPT-5.4 Mini | `gpt-5.4-mini` |
 
 ```bash
-export CLAUDE_CODE_USE_OPENAI=1
 redstone-code
+# Then /login and select "OpenAI Codex account"
 ```
 
 ### AWS Bedrock
@@ -116,19 +118,11 @@ Route requests through your AWS account via Amazon Bedrock.
 
 ```bash
 export CLAUDE_CODE_USE_BEDROCK=1
-export AWS_REGION="us-east-1"   # or AWS_DEFAULT_REGION
+export AWS_REGION="us-east-1"
 redstone-code
 ```
 
-Uses your standard AWS credentials (environment variables, `~/.aws/config`, or IAM role). Models are mapped to Bedrock ARN format automatically (e.g., `us.anthropic.claude-opus-4-6-v1`).
-
-| Variable | Purpose |
-|---|---|
-| `CLAUDE_CODE_USE_BEDROCK` | Enable Bedrock provider |
-| `AWS_REGION` / `AWS_DEFAULT_REGION` | AWS region (default: `us-east-1`) |
-| `ANTHROPIC_BEDROCK_BASE_URL` | Custom Bedrock endpoint |
-| `AWS_BEARER_TOKEN_BEDROCK` | Bearer token auth |
-| `CLAUDE_CODE_SKIP_BEDROCK_AUTH` | Skip auth (testing) |
+Uses your standard AWS credentials (environment variables, `~/.aws/config`, or IAM role).
 
 ### Google Cloud Vertex AI
 
@@ -139,7 +133,7 @@ export CLAUDE_CODE_USE_VERTEX=1
 redstone-code
 ```
 
-Uses Google Cloud Application Default Credentials (`gcloud auth application-default login`). Models are mapped to Vertex format automatically (e.g., `claude-opus-4-6@latest`).
+Uses Google Cloud Application Default Credentials (`gcloud auth application-default login`).
 
 ### Anthropic Foundry
 
@@ -151,17 +145,57 @@ export ANTHROPIC_FOUNDRY_API_KEY="..."
 redstone-code
 ```
 
-Supports custom deployment IDs as model names.
+### Provider Summary
 
-### Provider Selection Summary
-
-| Provider | Env Variable | Auth Method |
+| Provider | Setup | Auth |
 |---|---|---|
-| Anthropic (default) | -- | `ANTHROPIC_API_KEY` or OAuth |
-| OpenAI Codex | `CLAUDE_CODE_USE_OPENAI=1` | OAuth via OpenAI |
+| Anthropic (default) | `/login` | API key or OAuth |
+| Custom endpoint | `/login` > Custom provider | API key |
+| OpenAI Codex | `/login` | OAuth via OpenAI |
 | AWS Bedrock | `CLAUDE_CODE_USE_BEDROCK=1` | AWS credentials |
 | Google Vertex AI | `CLAUDE_CODE_USE_VERTEX=1` | `gcloud` ADC |
-| Anthropic Foundry | `CLAUDE_CODE_USE_FOUNDRY=1` | `ANTHROPIC_FOUNDRY_API_KEY` |
+| Anthropic Foundry | `CLAUDE_CODE_USE_FOUNDRY=1` | API key |
+
+---
+
+## Provider Profiles
+
+Redstone Code lets you save multiple provider configurations and switch between them without restarting.
+
+### Adding a provider
+
+1. Run `/login`
+2. Select **Custom provider**
+3. Enter the provider name, base URL, and API key
+4. Redstone Code auto-discovers available models (falls back to manual entry)
+5. The provider is saved and activated immediately
+
+### Switching providers
+
+Run `/login` again. Saved providers appear at the top of the screen:
+
+```
+Switch provider or login:
+
+> MiniMax (current) - MiniMax-M2.7
+  Anthropic - Default account
+
+  Set up new login:
+  1. Subscription account
+  2. Console account (API billing)
+  3. 3rd-party platform (Bedrock, Foundry, Vertex)
+  4. Custom provider (Anthropic-compatible endpoint)
+  5. OpenAI Codex account
+```
+
+Select any saved provider to hot-swap mid-session. The API client, model list, and auth are all updated instantly.
+
+### How it works
+
+- Profiles are stored in `~/.claude/claude.json` under `providerProfiles`
+- The active profile's environment variables (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_MODEL`) are set at runtime
+- Original env vars are stashed and restored when switching back
+- Cached models auto-refresh every 24 hours
 
 ---
 
@@ -226,23 +260,24 @@ bun run ./scripts/build.ts --dev --feature=BRIDGE_MODE
 # Run from source (slower startup)
 bun run dev
 
-# OAuth login
+# Login / switch providers
 ./cli /login
+
+# Switch model
+./cli /model
 ```
 
-### Environment Variables Reference
+### Environment Variables
 
 | Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `ANTHROPIC_API_KEY` | API key |
 | `ANTHROPIC_AUTH_TOKEN` | Auth token (alternative) |
 | `ANTHROPIC_MODEL` | Override default model |
 | `ANTHROPIC_BASE_URL` | Custom API endpoint |
 | `ANTHROPIC_DEFAULT_OPUS_MODEL` | Custom Opus model ID |
 | `ANTHROPIC_DEFAULT_SONNET_MODEL` | Custom Sonnet model ID |
 | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | Custom Haiku model ID |
-| `CLAUDE_CODE_OAUTH_TOKEN` | OAuth token via env |
-| `CLAUDE_CODE_API_KEY_HELPER_TTL_MS` | API key helper cache TTL |
 
 ---
 
@@ -254,7 +289,7 @@ The `bun run build:dev:full` build enables all 54 working feature flags. Highlig
 
 | Flag | Description |
 |---|---|
-| `ULTRAPLAN` | Remote multi-agent planning on Claude Code web (Opus-class) |
+| `ULTRAPLAN` | Remote multi-agent planning (Opus-class) |
 | `ULTRATHINK` | Deep thinking mode -- type "ultrathink" to boost reasoning effort |
 | `VOICE_MODE` | Push-to-talk voice input and dictation |
 | `TOKEN_BUDGET` | Token budget tracking and usage warnings |
@@ -305,12 +340,13 @@ src/
   tools/                  # Agent tool implementations (Bash, Read, Edit, etc.)
   components/             # Ink/React terminal UI components
   hooks/                  # React hooks
-  services/               # API clients, MCP, OAuth, analytics
-    api/                  # API client + Codex fetch adapter
-    oauth/                # OAuth flows (Anthropic + OpenAI)
+  services/               # API clients, MCP, OAuth
+    api/                  # API client + fetch adapters
+    oauth/                # OAuth flows
   state/                  # App state store
   utils/                  # Utilities
     model/                # Model configs, providers, validation
+    providerProfiles.ts   # Provider profile CRUD, discovery, hot-swap
   skills/                 # Skill system
   plugins/                # Plugin system
   bridge/                 # IDE bridge
@@ -349,4 +385,4 @@ Contributions are welcome. If you're working on restoring one of the 34 broken f
 
 ## License
 
-The original Claude Code source is the property of Anthropic. This fork exists because the source was publicly exposed through their npm distribution. Use at your own discretion.
+This project is based on a publicly available source snapshot. Use at your own discretion.

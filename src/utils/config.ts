@@ -180,6 +180,20 @@ export type DiffTool = 'terminal' | 'auto'
 
 export type OutputStyle = string
 
+export type ProviderProfile = {
+  id: string
+  name: string
+  type: 'anthropic-compatible'
+  baseUrl: string
+  apiKey: string
+  models: string[]
+  cachedModels?: string[]
+  cachedModelsAt?: number
+  defaultModel?: string
+  createdAt: number
+  lastUsedAt?: number
+}
+
 export type GlobalConfig = {
   /**
    * @deprecated Use settings.apiKeyHelper instead.
@@ -240,6 +254,8 @@ export type GlobalConfig = {
     expiresAt: number
     accountId: string
   }
+  providerProfiles?: ProviderProfile[]
+  activeProviderProfileId?: string | null
   iterm2KeyBindingInstalled?: boolean // Legacy - keeping for backward compatibility
   editorMode?: EditorMode
   bypassPermissionsModeAccepted?: boolean

@@ -31,6 +31,7 @@ import {
 import {
   applySafeConfigEnvironmentVariables,
 } from '../utils/managedEnv.js'
+import { initActiveProviderProfile } from '../utils/providerProfiles.js'
 import { configureGlobalMTLS } from '../utils/mtls.js'
 import {
   ensureScratchpadDir,
@@ -62,6 +63,7 @@ export const init = memoize(async (): Promise<void> => {
     // before any TLS connections. Bun caches the TLS cert store at boot
     // via BoringSSL, so this must happen before the first TLS handshake.
     applyExtraCACertsFromConfig()
+    initActiveProviderProfile()
 
     logForDiagnosticsNoPII('info', 'init_safe_env_vars_applied', {
       duration_ms: Date.now() - envVarsStart,

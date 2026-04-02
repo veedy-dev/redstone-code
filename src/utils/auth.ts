@@ -77,6 +77,7 @@ import {
 import { sleep } from './sleep.js'
 import { jsonParse } from './slowOperations.js'
 import { clearToolSchemaCache } from './toolSchemaCache.js'
+import { getActiveProviderProfile, isCustomProviderActive } from './providerProfiles.js'
 
 /** Default TTL for API key helper cache in milliseconds (5 minutes) */
 const DEFAULT_API_KEY_HELPER_TTL = 5 * 60 * 1000
@@ -210,6 +211,7 @@ export type ApiKeySource =
   | 'ANTHROPIC_API_KEY'
   | 'apiKeyHelper'
   | '/login managed key'
+  | 'custom_provider'
   | 'none'
 
 export function getAnthropicApiKey(): null | string {
@@ -230,6 +232,12 @@ export function getAnthropicApiKeyWithSource(
   key: null | string
   source: ApiKeySource
 } {
+  if (isCustomProviderActive()) {
+    const profile = getActiveProviderProfile()
+    if (profile) {
+      return { key: profile.apiKey, source: 'custom_provider' }
+    }
+  }
   // --bare: hermetic auth. Only ANTHROPIC_API_KEY env or apiKeyHelper from
   // the --settings flag. Never touches keychain, config file, or approval
   // lists. 3P (Bedrock/Vertex/Foundry) uses provider creds, not this path.
