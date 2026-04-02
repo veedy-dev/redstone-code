@@ -90,6 +90,7 @@ export function applyProviderProfile(profile: ProviderProfile): void {
     ...config,
     activeProviderProfileId: profile.id,
   }))
+  void refreshCachedModelsIfStale(profile)
 }
 
 export function deactivateProviderProfile(): void {
@@ -121,6 +122,22 @@ export async function discoverModels(
     }
   }
   return []
+}
+
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000
+
+export async function refreshCachedModelsIfStale(profile: ProviderProfile): Promise<void> {
+  const isStale = !profile.cachedModelsAt || (Date.now() - profile.cachedModelsAt > CACHE_TTL_MS)
+  if (!isStale) return
+
+  const found = await discoverModels(profile.baseUrl, profile.apiKey)
+  if (found.length > 0) {
+    saveProviderProfile({
+      ...profile,
+      cachedModels: found,
+      cachedModelsAt: Date.now(),
+    })
+  }
 }
 
 export function updateProfileLastUsed(id: string): void {
