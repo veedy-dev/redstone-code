@@ -147,7 +147,7 @@ const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
   hasClaudeMdExternalIncludesWarningShown: false,
 }
 
-export type InstallMethod = 'local' | 'native' | 'global' | 'unknown'
+export type InstallMethod = 'local' | 'native' | 'global' | 'git-clone' | 'unknown'
 
 export {
   EDITOR_MODES,

@@ -64,12 +64,12 @@ function runCommand(cmd: string[]): string | null {
   return new TextDecoder().decode(proc.stdout).trim() || null
 }
 
-function getDevVersion(baseVersion: string): string {
-  const timestamp = new Date().toISOString()
-  const date = timestamp.slice(0, 10).replaceAll('-', '')
-  const time = timestamp.slice(11, 19).replaceAll(':', '')
-  const sha = runCommand(['git', 'rev-parse', '--short=8', 'HEAD']) ?? 'unknown'
-  return `${baseVersion}-dev.${date}.t${time}.sha${sha}`
+function getShortSha(): string {
+  return runCommand(['git', 'rev-parse', '--short=7', 'HEAD']) ?? 'unknown'
+}
+
+function getDisplayVersion(baseVersion: string): string {
+  return `${baseVersion} (${getShortSha()})`
 }
 
 function getVersionChangelog(): string {
@@ -118,7 +118,8 @@ const outfile = compile
     ? `./cli-dev${ext}`
     : `./cli${ext}`
 const buildTime = new Date().toISOString()
-const version = dev ? getDevVersion(pkg.version) : pkg.version
+const version = pkg.version
+const displayVersion = getDisplayVersion(pkg.version)
 
 const outDir = dirname(outfile)
 if (outDir !== '.') {
@@ -147,6 +148,7 @@ const defines = {
   'process.env.CLAUDE_CODE_VERIFY_PLAN': JSON.stringify('false'),
   'process.env.CCR_FORCE_BUNDLE': JSON.stringify('true'),
   'MACRO.VERSION': JSON.stringify(version),
+  'MACRO.DISPLAY_VERSION': JSON.stringify(displayVersion),
   'MACRO.BUILD_TIME': JSON.stringify(buildTime),
   'MACRO.PACKAGE_URL': JSON.stringify(pkg.name),
   'MACRO.NATIVE_PACKAGE_URL': 'undefined',

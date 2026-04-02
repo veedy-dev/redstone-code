@@ -29,7 +29,7 @@ import { getInitialSettings } from 'src/utils/settings/settings.js'
 
 export async function update() {
   logEvent('tengu_update_check', {})
-  writeToStdout(`Current version: ${MACRO.VERSION}\n`)
+  writeToStdout(`Current version: ${MACRO.DISPLAY_VERSION}\n`)
 
   const channel = getInitialSettings()?.autoUpdatesChannel ?? 'latest'
   writeToStdout(`Checking for updates to ${channel} version...\n`)
@@ -81,9 +81,8 @@ export async function update() {
   ) {
     writeToStdout('\n')
     writeToStdout('Updating configuration to track installation method...\n')
-    let detectedMethod: 'local' | 'native' | 'global' | 'unknown' = 'unknown'
+    let detectedMethod: 'local' | 'native' | 'global' | 'git-clone' | 'unknown' = 'unknown'
 
-    // Map diagnostic installation type to config install method
     switch (diagnostic.installationType) {
       case 'npm-local':
         detectedMethod = 'local'
@@ -93,6 +92,9 @@ export async function update() {
         break
       case 'npm-global':
         detectedMethod = 'global'
+        break
+      case 'git-clone':
+        detectedMethod = 'git-clone'
         break
       default:
         detectedMethod = 'unknown'
@@ -112,6 +114,59 @@ export async function update() {
       chalk.yellow('Warning: Cannot update development build') + '\n',
     )
     await gracefulShutdown(1)
+  }
+
+  // Check if running from a git-clone installation
+  if (diagnostic.installationType === 'git-clone') {
+    writeToStdout('\n')
+    const latestVersion = await getLatestVersion(channel)
+
+    if (!latestVersion) {
+      process.stderr.write(
+        chalk.red('Failed to check for updates from GitHub\n'),
+      )
+      await gracefulShutdown(1)
+    }
+
+    if (latestVersion && gte(MACRO.VERSION, latestVersion)) {
+      writeToStdout(
+        chalk.green(`Redstone Code is up to date (${MACRO.DISPLAY_VERSION})`) +
+          '\n',
+      )
+      await gracefulShutdown(0)
+    }
+
+    writeToStdout(
+      `New version available: ${latestVersion} (current: ${MACRO.VERSION})\n`,
+    )
+    writeToStdout('Updating from GitHub...\n')
+
+    const { installGitCloneUpdate } = await import(
+      'src/utils/autoUpdater.js'
+    )
+    const status = await installGitCloneUpdate()
+
+    switch (status) {
+      case 'success':
+        writeToStdout(
+          chalk.green('Successfully updated! Restart to use the new version.') +
+            '\n',
+        )
+        break
+      case 'install_failed':
+        process.stderr.write(chalk.red('Update failed.\n'))
+        process.stderr.write('Try manually:\n')
+        process.stderr.write(
+          '  cd ~/redstone-code && git pull && bun install && bun run build:dev:full\n',
+        )
+        await gracefulShutdown(1)
+        break
+      case 'in_progress':
+        process.stderr.write('Another update is in progress. Try again later.\n')
+        await gracefulShutdown(1)
+        break
+    }
+    await gracefulShutdown(0)
   }
 
   // Check if running from a package manager

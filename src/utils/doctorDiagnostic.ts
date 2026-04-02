@@ -1,7 +1,8 @@
 import { execa } from 'execa'
+import { existsSync } from 'fs'
 import { readFile, realpath } from 'fs/promises'
 import { homedir } from 'os'
-import { delimiter, join, posix, win32 } from 'path'
+import { delimiter, dirname, join, posix, win32 } from 'path'
 import { checkGlobalInstallPermissions } from './autoUpdater.js'
 import { isInBundledMode } from './bundledMode.js'
 import {
@@ -48,6 +49,7 @@ export type InstallationType =
   | 'npm-local'
   | 'native'
   | 'package-manager'
+  | 'git-clone'
   | 'development'
   | 'unknown'
 
@@ -104,6 +106,10 @@ export async function getCurrentInstallationType(): Promise<InstallationType> {
       (await detectApk())
     ) {
       return 'package-manager'
+    }
+    const binaryDir = dirname(process.execPath)
+    if (existsSync(join(binaryDir, '.git'))) {
+      return 'git-clone'
     }
     return 'native'
   }

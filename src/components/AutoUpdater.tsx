@@ -4,7 +4,7 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { useInterval } from 'usehooks-ts';
 import { useUpdateNotification } from '../hooks/useUpdateNotification.js';
 import { Box, Text } from '../ink.js';
-import { type AutoUpdaterResult, getLatestVersion, getMaxVersion, type InstallStatus, installGlobalPackage, shouldSkipVersion } from '../utils/autoUpdater.js';
+import { type AutoUpdaterResult, getLatestVersion, getMaxVersion, type InstallStatus, installGitCloneUpdate, installGlobalPackage, shouldSkipVersion } from '../utils/autoUpdater.js';
 import { getGlobalConfig, isAutoUpdaterDisabled } from '../utils/config.js';
 import { logForDebugging } from '../utils/debug.js';
 import { getCurrentInstallationType } from '../utils/doctorDiagnostic.js';
@@ -103,8 +103,11 @@ export function AutoUpdater({
       // Choose the appropriate update method based on what's actually running
       let installStatus: InstallStatus;
       let updateMethod: 'local' | 'global';
-      if (installationType === 'npm-local') {
-        // Use local update for local installations
+      if (installationType === 'git-clone') {
+        logForDebugging('AutoUpdater: Using git-clone update method');
+        updateMethod = 'local';
+        installStatus = await installGitCloneUpdate();
+      } else if (installationType === 'npm-local') {
         logForDebugging('AutoUpdater: Using local update method');
         updateMethod = 'local';
         installStatus = await installOrUpdateClaudePackage(channel);

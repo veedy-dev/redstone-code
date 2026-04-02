@@ -317,30 +317,23 @@ export async function checkGlobalInstallPermissions(): Promise<{
 }
 
 export async function getLatestVersion(
-  channel: ReleaseChannel,
+  _channel: ReleaseChannel,
 ): Promise<string | null> {
-  const npmTag = channel === 'stable' ? 'stable' : 'latest'
-
-  // Run from home directory to avoid reading project-level .npmrc
-  // which could be maliciously crafted to redirect to an attacker's registry
-  const result = await execFileNoThrowWithCwd(
-    'npm',
-    ['view', `${MACRO.PACKAGE_URL}@${npmTag}`, 'version', '--prefer-online'],
-    { abortSignal: AbortSignal.timeout(5000), cwd: homedir() },
-  )
-  if (result.code !== 0) {
-    logForDebugging(`npm view failed with code ${result.code}`)
-    if (result.stderr) {
-      logForDebugging(`npm stderr: ${result.stderr.trim()}`)
-    } else {
-      logForDebugging('npm stderr: (empty)')
+  try {
+    const response = await fetch(
+      'https://raw.githubusercontent.com/veedy-dev/redstone-code/main/package.json',
+      { signal: AbortSignal.timeout(5000) },
+    )
+    if (!response.ok) {
+      logForDebugging(`GitHub version check failed: HTTP ${response.status}`)
+      return null
     }
-    if (result.stdout) {
-      logForDebugging(`npm stdout: ${result.stdout.trim()}`)
-    }
+    const data = (await response.json()) as { version?: string }
+    return data.version ?? null
+  } catch (error) {
+    logForDebugging(`GitHub version check failed: ${error}`)
     return null
   }
-  return result.stdout.trim()
 }
 
 export type NpmDistTags = {
@@ -348,32 +341,70 @@ export type NpmDistTags = {
   stable: string | null
 }
 
-/**
- * Get npm dist-tags (latest and stable versions) from the registry.
- * This is used by the doctor command to show users what versions are available.
- */
 export async function getNpmDistTags(): Promise<NpmDistTags> {
-  // Run from home directory to avoid reading project-level .npmrc
-  const result = await execFileNoThrowWithCwd(
-    'npm',
-    ['view', MACRO.PACKAGE_URL, 'dist-tags', '--json', '--prefer-online'],
-    { abortSignal: AbortSignal.timeout(5000), cwd: homedir() },
-  )
+  const latest = await getLatestVersion('latest')
+  return { latest, stable: latest }
+}
 
-  if (result.code !== 0) {
-    logForDebugging(`npm view dist-tags failed with code ${result.code}`)
-    return { latest: null, stable: null }
+export async function installGitCloneUpdate(): Promise<InstallStatus> {
+  if (!(await acquireLock())) {
+    return 'in_progress'
   }
-
   try {
-    const parsed = jsonParse(result.stdout.trim()) as Record<string, unknown>
-    return {
-      latest: typeof parsed.latest === 'string' ? parsed.latest : null,
-      stable: typeof parsed.stable === 'string' ? parsed.stable : null,
+    const { dirname } = await import('path')
+    const installDir = dirname(process.execPath)
+
+    const fetchResult = await execFileNoThrowWithCwd(
+      'git',
+      ['fetch', '--depth', '1', 'origin', 'main'],
+      { cwd: installDir, timeout: 30000 },
+    )
+    if (fetchResult.code !== 0) {
+      logForDebugging(`git fetch failed: ${fetchResult.stderr}`)
+      return 'install_failed'
     }
+
+    const resetResult = await execFileNoThrowWithCwd(
+      'git',
+      ['reset', '--hard', 'origin/main'],
+      { cwd: installDir, timeout: 10000 },
+    )
+    if (resetResult.code !== 0) {
+      logForDebugging(`git reset failed: ${resetResult.stderr}`)
+      return 'install_failed'
+    }
+
+    const installResult = await execFileNoThrowWithCwd(
+      'bun',
+      ['install'],
+      { cwd: installDir, timeout: 60000 },
+    )
+    if (installResult.code !== 0) {
+      logForDebugging(`bun install failed: ${installResult.stderr}`)
+      return 'install_failed'
+    }
+
+    const buildResult = await execFileNoThrowWithCwd(
+      'bun',
+      ['run', 'build:dev:full'],
+      { cwd: installDir, timeout: 120000 },
+    )
+    if (buildResult.code !== 0) {
+      logForDebugging(`bun build failed: ${buildResult.stderr}`)
+      return 'install_failed'
+    }
+
+    saveGlobalConfig(current => ({
+      ...current,
+      installMethod: 'git-clone',
+    }))
+
+    return 'success'
   } catch (error) {
-    logForDebugging(`Failed to parse dist-tags: ${error}`)
-    return { latest: null, stable: null }
+    logForDebugging(`git-clone update failed: ${error}`)
+    return 'install_failed'
+  } finally {
+    await releaseLock()
   }
 }
 
