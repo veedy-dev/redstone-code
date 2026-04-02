@@ -4,7 +4,7 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { useInterval } from 'usehooks-ts';
 import { useUpdateNotification } from '../hooks/useUpdateNotification.js';
 import { Box, Text } from '../ink.js';
-import { type AutoUpdaterResult, getLatestVersion, getMaxVersion, type InstallStatus, installGitCloneUpdate, installGlobalPackage, shouldSkipVersion } from '../utils/autoUpdater.js';
+import { type AutoUpdaterResult, downloadGitCloneUpdate, getLatestVersion, getMaxVersion, type InstallStatus, installGlobalPackage, shouldSkipVersion } from '../utils/autoUpdater.js';
 import { getGlobalConfig, isAutoUpdaterDisabled } from '../utils/config.js';
 import { logForDebugging } from '../utils/debug.js';
 import { getCurrentInstallationType } from '../utils/doctorDiagnostic.js';
@@ -49,7 +49,11 @@ export function AutoUpdater({
     if (isUpdatingRef.current) {
       return;
     }
-    if ("production" === 'test' || "production" === 'development') {
+    // Allow git-clone installations to auto-update even in dev builds
+    const { existsSync } = await import('fs');
+    const { dirname: dirnameFn, join: joinFn } = await import('path');
+    const isGitCloneInstall = existsSync(joinFn(dirnameFn(process.execPath), '.git'));
+    if (!isGitCloneInstall && ("production" === 'test' || "production" === 'development')) {
       logForDebugging('AutoUpdater: Skipping update check in test/dev environment');
       return;
     }
@@ -106,7 +110,7 @@ export function AutoUpdater({
       if (installationType === 'git-clone') {
         logForDebugging('AutoUpdater: Using git-clone update method');
         updateMethod = 'local';
-        installStatus = await installGitCloneUpdate();
+        installStatus = await downloadGitCloneUpdate();
       } else if (installationType === 'npm-local') {
         logForDebugging('AutoUpdater: Using local update method');
         updateMethod = 'local';
@@ -188,13 +192,10 @@ export function AutoUpdater({
             </Text>
           </Box>
         </> : autoUpdaterResult?.status === 'success' && showSuccessMessage && updateSemver && <Text color="success" wrap="truncate">
-            ✓ Update installed · Restart to apply
+            ✓ Update downloaded · Run <Text bold>redstone-code update</Text> to rebuild
           </Text>}
       {(autoUpdaterResult?.status === 'install_failed' || autoUpdaterResult?.status === 'no_permissions') && <Text color="error" wrap="truncate">
-          ✗ Auto-update failed &middot; Try <Text bold>claude doctor</Text> or{' '}
-          <Text bold>
-            {hasLocalInstall ? `cd ~/.claude/local && npm update ${MACRO.PACKAGE_URL}` : `npm i -g ${MACRO.PACKAGE_URL}`}
-          </Text>
+          ✗ Auto-update failed &middot; Try <Text bold>redstone-code update</Text>
         </Text>}
     </Box>;
 }

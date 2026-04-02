@@ -346,13 +346,17 @@ export async function getNpmDistTags(): Promise<NpmDistTags> {
   return { latest, stable: latest }
 }
 
-export async function installGitCloneUpdate(): Promise<InstallStatus> {
+function getGitCloneInstallDir(): string {
+  const { dirname } = require('path') as typeof import('path')
+  return dirname(process.execPath)
+}
+
+export async function downloadGitCloneUpdate(): Promise<InstallStatus> {
   if (!(await acquireLock())) {
     return 'in_progress'
   }
   try {
-    const { dirname } = await import('path')
-    const installDir = dirname(process.execPath)
+    const installDir = getGitCloneInstallDir()
 
     const fetchResult = await execFileNoThrowWithCwd(
       'git',
@@ -384,16 +388,6 @@ export async function installGitCloneUpdate(): Promise<InstallStatus> {
       return 'install_failed'
     }
 
-    const buildResult = await execFileNoThrowWithCwd(
-      'bun',
-      ['run', 'build:dev:full'],
-      { cwd: installDir, timeout: 120000 },
-    )
-    if (buildResult.code !== 0) {
-      logForDebugging(`bun build failed: ${buildResult.stderr}`)
-      return 'install_failed'
-    }
-
     saveGlobalConfig(current => ({
       ...current,
       installMethod: 'git-clone',
@@ -401,11 +395,31 @@ export async function installGitCloneUpdate(): Promise<InstallStatus> {
 
     return 'success'
   } catch (error) {
-    logForDebugging(`git-clone update failed: ${error}`)
+    logForDebugging(`git-clone download failed: ${error}`)
     return 'install_failed'
   } finally {
     await releaseLock()
   }
+}
+
+export async function installGitCloneUpdate(): Promise<InstallStatus> {
+  const downloadStatus = await downloadGitCloneUpdate()
+  if (downloadStatus !== 'success') {
+    return downloadStatus
+  }
+
+  const installDir = getGitCloneInstallDir()
+  const buildResult = await execFileNoThrowWithCwd(
+    'bun',
+    ['run', 'build:dev:full'],
+    { cwd: installDir, timeout: 120000 },
+  )
+  if (buildResult.code !== 0) {
+    logForDebugging(`bun build failed: ${buildResult.stderr}`)
+    return 'install_failed'
+  }
+
+  return 'success'
 }
 
 /**

@@ -86,6 +86,15 @@ function getNormalizedPaths(): [invokedPath: string, execPath: string] {
 }
 
 export async function getCurrentInstallationType(): Promise<InstallationType> {
+  // Check for git-clone installation first (before NODE_ENV check)
+  // Dev builds installed via git clone should be detected as git-clone, not development
+  if (isInBundledMode()) {
+    const binaryDir = dirname(process.execPath)
+    if (existsSync(join(binaryDir, '.git'))) {
+      return 'git-clone'
+    }
+  }
+
   if (process.env.NODE_ENV === 'development') {
     return 'development'
   }
@@ -106,10 +115,6 @@ export async function getCurrentInstallationType(): Promise<InstallationType> {
       (await detectApk())
     ) {
       return 'package-manager'
-    }
-    const binaryDir = dirname(process.execPath)
-    if (existsSync(join(binaryDir, '.git'))) {
-      return 'git-clone'
     }
     return 'native'
   }
