@@ -59,6 +59,7 @@ import { renderModelSetting } from '../../utils/model/model.js'
 import { InfoTable } from './InfoTable.js'
 import { getAuthTokenSource } from '../../utils/auth.js'
 import { getDirectConnectServerUrl } from '../../bootstrap/state.js'
+import { getAPIProvider } from '../../utils/model/providers.js'
 
 const ChannelsNoticeModule =
   feature('KAIROS') || feature('KAIROS_CHANNELS')
@@ -76,9 +77,21 @@ const REDSTONE_TEXT = [
 ]
 const TEXT_ART_WIDTH = 53
 
+function getProviderName(): string {
+  const provider = getAPIProvider()
+  switch (provider) {
+    case 'firstParty': return 'Anthropic'
+    case 'bedrock': return 'AWS Bedrock'
+    case 'vertex': return 'Google Vertex'
+    case 'foundry': return 'Azure Foundry'
+    case 'openai': return 'OpenAI'
+    default: return 'Anthropic'
+  }
+}
+
 function getConnectionInfo(): { type: string; dot: 'green' | 'yellow' | 'blue' } {
   const serverUrl = getDirectConnectServerUrl()
-  if (serverUrl) return { type: `Cloud (${serverUrl})`, dot: 'green' }
+  if (serverUrl) return { type: `Cloud`, dot: 'green' }
   const { source } = getAuthTokenSource()
   if (source === 'claude.ai' || source === 'ANTHROPIC_AUTH_TOKEN' || source === 'CLAUDE_CODE_OAUTH_TOKEN') {
     return { type: 'Cloud', dot: 'green' }
@@ -170,6 +183,7 @@ export function LogoV2(): React.ReactNode {
   const effortSuffix = getEffortSuffix(model, effortValue)
   const modelDisplayName = fullModelDisplayName + effortSuffix
   const connectionInfo = getConnectionInfo()
+  const providerName = getProviderName()
 
   const innerWidth = Math.max(40, columns - 4)
   const feedWidth = Math.max(30, innerWidth - 4)
@@ -268,16 +282,18 @@ export function LogoV2(): React.ReactNode {
   )
 
   const welcomeRow = (
-    <Box justifyContent="space-between" width={innerWidth}>
-      <Text bold>{welcome}</Text>
-      <Text dimColor>v{version}</Text>
-    </Box>
+    <Text bold>{welcome}</Text>
+  )
+
+  const versionText = (
+    <Text dimColor>v{version}</Text>
   )
 
   const infoTable = (
     <InfoTable
-      model={truncate(modelDisplayName, innerWidth - 16)}
-      provider={billingType}
+      model={truncate(modelDisplayName, 40)}
+      provider={providerName}
+      plan={billingType}
       connectionType={connectionInfo.type}
       connectionDot={connectionInfo.dot}
       cwd={cwd}
@@ -299,11 +315,11 @@ export function LogoV2(): React.ReactNode {
           flexDirection="column"
           paddingX={1}
           paddingY={0}
-          width={Math.min(columns, 72)}
         >
           {textArt}
           {titleRow}
           {welcomeRow}
+          {versionText}
           <Text>{' '}</Text>
           {infoTable}
           <Text>{' '}</Text>
@@ -340,11 +356,11 @@ export function LogoV2(): React.ReactNode {
       flexDirection="column"
       paddingX={1}
       paddingY={0}
-      width={Math.min(columns, 80)}
     >
       {textArt}
       {titleRow}
       {welcomeRow}
+      {versionText}
       <Text>{' '}</Text>
       {infoTable}
       <Text>{' '}</Text>
