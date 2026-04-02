@@ -108,7 +108,19 @@ export async function update() {
   }
 
   // Check if running from development build
-  if (diagnostic.installationType === 'development') {
+  // Also handle old binaries that detect git-clone installs as 'development'
+  const isGitClone = diagnostic.installationType === 'git-clone' || (
+    diagnostic.installationType === 'development' &&
+    (() => {
+      try {
+        const { existsSync } = require('fs') as typeof import('fs')
+        const { dirname, join } = require('path') as typeof import('path')
+        return existsSync(join(dirname(process.execPath), '.git'))
+      } catch { return false }
+    })()
+  )
+
+  if (diagnostic.installationType === 'development' && !isGitClone) {
     writeToStdout('\n')
     writeToStdout(
       chalk.yellow('Warning: Cannot update development build') + '\n',
@@ -116,8 +128,7 @@ export async function update() {
     await gracefulShutdown(1)
   }
 
-  // Check if running from a git-clone installation
-  if (diagnostic.installationType === 'git-clone') {
+  if (isGitClone) {
     writeToStdout('\n')
     const latestVersion = await getLatestVersion(channel)
 
