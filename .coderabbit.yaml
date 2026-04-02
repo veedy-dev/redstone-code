@@ -1,0 +1,11 @@
+language: en-US
+reviews:
+  profile: chill
+  auto_review:
+    enabled: true
+    base_branches:
+      - main
+      - develop
+  review_status: true
+chat:
+  auto_reply: true
