@@ -97,22 +97,13 @@ Or restart your terminal.
 function Install-Repo {
     if (Test-Path $InstallDir) {
         Write-Warn "$InstallDir already exists"
-        if (Test-Path (Join-Path $InstallDir '.git')) {
-            Write-Info 'Pulling latest changes...'
-            try {
-                git -C $InstallDir fetch origin main 2>$null
-                git -C $InstallDir reset --hard origin/main 2>$null
-                Write-Ok 'Updated to latest main'
-            } catch {
-                Write-Warn 'Update failed, continuing with existing copy'
-            }
-        }
-    } else {
-        Write-Info 'Cloning repository...'
-        git clone --depth 1 $Repo $InstallDir
-        if (-not (Test-Path $InstallDir)) {
-            Write-Fail "Clone failed. Check that the repository is accessible: $Repo"
-        }
+        Write-Info 'Removing old copy and re-cloning...'
+        Remove-Item -Recurse -Force $InstallDir
+    }
+    Write-Info 'Cloning repository...'
+    git clone --depth 1 $Repo $InstallDir
+    if (-not (Test-Path $InstallDir)) {
+        Write-Fail "Clone failed. Check that the repository is accessible: $Repo"
     }
     Write-Ok "Source: $InstallDir"
 }

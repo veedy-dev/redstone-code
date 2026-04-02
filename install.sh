@@ -104,18 +104,11 @@ install_bun() {
 clone_repo() {
   if [ -d "$INSTALL_DIR" ]; then
     warn "$INSTALL_DIR already exists"
-    if [ -d "$INSTALL_DIR/.git" ]; then
-      info "Pulling latest changes..."
-      git -C "$INSTALL_DIR" fetch origin main 2>/dev/null && \
-        git -C "$INSTALL_DIR" reset --hard origin/main 2>/dev/null && \
-        ok "Updated to latest main" || {
-        warn "Update failed, continuing with existing copy"
-      }
-    fi
-  else
-    info "Cloning repository..."
-    git clone --depth 1 "$REPO" "$INSTALL_DIR"
+    info "Removing old copy and re-cloning..."
+    rm -rf "$INSTALL_DIR"
   fi
+  info "Cloning repository..."
+  git clone --depth 1 "$REPO" "$INSTALL_DIR"
   ok "Source: $INSTALL_DIR"
 }
 
