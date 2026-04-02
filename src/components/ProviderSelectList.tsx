@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Box, Text } from '../ink.js'
 import { Select } from './CustomSelect/select.js'
 import {
@@ -7,6 +7,7 @@ import {
   applyProviderProfile,
   deactivateProviderProfile,
   updateProfileLastUsed,
+  removeProviderProfile,
 } from '../utils/providerProfiles.js'
 import type { ProviderProfile } from '../utils/config.js'
 
@@ -15,6 +16,7 @@ type Props = {
 }
 
 export function ProviderSelectList({ onSelect }: Props): React.ReactNode {
+  const [, forceUpdate] = useState(0)
   const profiles = getProviderProfiles()
   const activeId = getActiveProviderProfileId()
 
@@ -44,6 +46,14 @@ export function ProviderSelectList({ onSelect }: Props): React.ReactNode {
       ),
       value: profile.id,
     })
+    options.push({
+      label: (
+        <Text dimColor>
+          {'  '}Remove {profile.name}{'\n'}
+        </Text>
+      ),
+      value: `__remove__${profile.id}`,
+    })
   }
 
   options.push({
@@ -58,6 +68,12 @@ export function ProviderSelectList({ onSelect }: Props): React.ReactNode {
   })
 
   const handleChange = (value: string) => {
+    if (value.startsWith('__remove__')) {
+      const id = value.slice('__remove__'.length)
+      removeProviderProfile(id)
+      forceUpdate(n => n + 1)
+      return
+    }
     if (value === '__anthropic__') {
       deactivateProviderProfile()
       onSelect('anthropic')
