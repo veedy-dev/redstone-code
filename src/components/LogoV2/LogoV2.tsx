@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { Box, Text } from '../../ink.js'
 import { useTerminalSize } from '../../hooks/useTerminalSize.js'
-import { stringWidth } from '../../ink/stringWidth.js'
 import {
   formatWelcomeMessage,
   truncatePath,
@@ -57,14 +56,37 @@ import { useAppState } from '../../state/AppState.js'
 import { getEffortSuffix } from '../../utils/effort.js'
 import { useMainLoopModel } from '../../hooks/useMainLoopModel.js'
 import { renderModelSetting } from '../../utils/model/model.js'
-import { RedstoneBanner, BANNER_WIDTH } from './RedstoneBanner.js'
-import { InfoBar } from './InfoBar.js'
-import { VoxelDivider } from './VoxelDivider.js'
+import { InfoTable } from './InfoTable.js'
+import { getAuthTokenSource } from '../../utils/auth.js'
+import { getDirectConnectServerUrl } from '../../bootstrap/state.js'
 
 const ChannelsNoticeModule =
   feature('KAIROS') || feature('KAIROS_CHANNELS')
     ? (require('./ChannelsNotice.js') as typeof import('./ChannelsNotice.js'))
     : null
+
+const REDSTONE_TEXT = [
+  '█████▄  ▄▄▄▄▄ ▄▄▄▄   ▄▄▄▄ ▄▄▄▄▄▄ ▄▄▄  ▄▄  ▄▄ ▄▄▄▄▄',
+  '██▄▄██▄ ██▄▄  ██▀██ ███▄▄   ██  ██▀██ ███▄██ ██▄▄',
+  '██   ██ ██▄▄▄ ████▀ ▄▄██▀   ██  ▀███▀ ██ ▀██ ██▄▄▄',
+  '',
+  '▄█████  ▄▄▄  ▄▄▄▄  ▄▄▄▄▄',
+  '██     ██▀██ ██▀██ ██▄▄',
+  '▀█████ ▀███▀ ████▀ ██▄▄▄',
+]
+const TEXT_ART_WIDTH = 53
+
+function getConnectionInfo(): { type: string; dot: 'green' | 'yellow' | 'blue' } {
+  const serverUrl = getDirectConnectServerUrl()
+  if (serverUrl) return { type: `Cloud (${serverUrl})`, dot: 'green' }
+  const { source } = getAuthTokenSource()
+  if (source === 'claude.ai' || source === 'ANTHROPIC_AUTH_TOKEN' || source === 'CLAUDE_CODE_OAUTH_TOKEN') {
+    return { type: 'Cloud', dot: 'green' }
+  }
+  if (source === 'apiKeyHelper') return { type: 'API Key', dot: 'blue' }
+  if (source === 'none') return { type: 'Not configured', dot: 'yellow' }
+  return { type: 'Cloud', dot: 'green' }
+}
 
 export function LogoV2(): React.ReactNode {
   const activities = getRecentActivitySync()
@@ -146,13 +168,11 @@ export function LogoV2(): React.ReactNode {
     getLogoDisplayData()
   const agentName = agent ?? agentNameFromSettings
   const effortSuffix = getEffortSuffix(model, effortValue)
-  const modelDisplayName = truncate(
-    fullModelDisplayName + effortSuffix,
-    30,
-  )
+  const modelDisplayName = fullModelDisplayName + effortSuffix
+  const connectionInfo = getConnectionInfo()
 
-  const showBanner = columns >= BANNER_WIDTH + 4
-  const feedWidth = Math.max(30, columns - 6)
+  const innerWidth = Math.max(40, columns - 4)
+  const feedWidth = Math.max(30, innerWidth - 4)
 
   const feeds = useMemo(() => {
     const activityFeed = createRecentActivityFeed(activities, feedWidth)
@@ -226,73 +246,111 @@ export function LogoV2(): React.ReactNode {
     </>
   )
 
+  const welcome = username
+    ? `Welcome back, ${username}`
+    : 'Welcome'
+
+  const showTextArt = columns >= TEXT_ART_WIDTH + 6
+
+  const textArt = showTextArt ? (
+    <Box flexDirection="column">
+      {REDSTONE_TEXT.map((line, i) => (
+        <Text key={i} color="startupAccent">{line}</Text>
+      ))}
+    </Box>
+  ) : null
+
+  const titleRow = showTextArt ? null : (
+    <Box justifyContent="space-between" width={innerWidth}>
+      <Text color="startupAccent" bold>Redstone Code</Text>
+      <Text dimColor>v{version}</Text>
+    </Box>
+  )
+
+  const welcomeRow = (
+    <Box justifyContent="space-between" width={innerWidth}>
+      <Text bold>{welcome}</Text>
+      <Text dimColor>v{version}</Text>
+    </Box>
+  )
+
+  const infoTable = (
+    <InfoTable
+      model={truncate(modelDisplayName, innerWidth - 16)}
+      provider={billingType}
+      connectionType={connectionInfo.type}
+      connectionDot={connectionInfo.dot}
+      cwd={cwd}
+      agentName={agentName ?? undefined}
+      width={innerWidth}
+    />
+  )
+
+  const helpPrompt = (
+    <Text dimColor>Type <Text color="startupAccent">/help</Text> to get started</Text>
+  )
+
   if (isCondensedMode) {
     return (
       <>
-        <Box flexDirection="column" paddingLeft={2}>
-          <Text>
-            <Text color="startupAccent" bold>
-              Redstone Code
-            </Text>{' '}
-            <Text dimColor>v{version}</Text>
-            <Text dimColor>
-              {' · '}
-              {modelDisplayName} · {billingType}
-            </Text>
-          </Text>
-          <Text dimColor>
-            {agentName ? `@${agentName} · ` : ''}
-            {truncatePath(cwd, columns - 4)}
-          </Text>
+        <Box
+          borderStyle="round"
+          borderColor="startupAccent"
+          flexDirection="column"
+          paddingX={1}
+          paddingY={0}
+          width={Math.min(columns, 72)}
+        >
+          {textArt}
+          {titleRow}
+          {welcomeRow}
+          <Text>{' '}</Text>
+          {infoTable}
+          <Text>{' '}</Text>
+          {helpPrompt}
         </Box>
         {notices}
       </>
     )
   }
 
+  const feedSection =
+    columns >= 80 ? (
+      <Box flexDirection="row" gap={4}>
+        {feeds.map((feed, i) => (
+          <FeedColumn
+            key={i}
+            feeds={[feed]}
+            maxWidth={Math.floor((feedWidth - 4) / 2)}
+          />
+        ))}
+      </Box>
+    ) : (
+      <Box flexDirection="column">
+        {feeds.map((feed, i) => (
+          <FeedColumn key={i} feeds={[feed]} maxWidth={feedWidth} />
+        ))}
+      </Box>
+    )
+
   const mainContent = (
-    <Box flexDirection="column">
-      {showBanner && <RedstoneBanner version={`v${version}`} />}
-      {!showBanner && (
-        <Box paddingLeft={2}>
-          <Text>
-            <Text color="startupAccent" bold>
-              Redstone Code
-            </Text>{' '}
-            <Text dimColor>v{version}</Text>
-          </Text>
-        </Box>
-      )}
+    <Box
+      borderStyle="round"
+      borderColor="startupAccent"
+      flexDirection="column"
+      paddingX={1}
+      paddingY={0}
+      width={Math.min(columns, 80)}
+    >
+      {textArt}
+      {titleRow}
+      {welcomeRow}
       <Text>{' '}</Text>
-      <InfoBar
-        username={username || null}
-        version={version}
-        modelDisplayName={modelDisplayName}
-        billingType={billingType}
-        cwd={cwd}
-        agentName={agentName ?? undefined}
-        columns={columns}
-      />
+      {infoTable}
       <Text>{' '}</Text>
-      <VoxelDivider width={Math.min(feedWidth + 4, columns)} />
+      {feedSection}
       <Text>{' '}</Text>
-      {columns >= 80 ? (
-        <Box flexDirection="row" paddingLeft={2} gap={4}>
-          {feeds.map((feed, i) => (
-            <FeedColumn
-              key={i}
-              feeds={[feed]}
-              maxWidth={Math.floor((feedWidth - 4) / 2)}
-            />
-          ))}
-        </Box>
-      ) : (
-        <Box flexDirection="column" paddingLeft={2}>
-          {feeds.map((feed, i) => (
-            <FeedColumn key={i} feeds={[feed]} maxWidth={feedWidth} />
-          ))}
-        </Box>
-      )}
+      {helpPrompt}
     </Box>
   )
 
