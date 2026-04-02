@@ -211,6 +211,7 @@ export type ApiKeySource =
   | 'ANTHROPIC_API_KEY'
   | 'apiKeyHelper'
   | '/login managed key'
+  | 'custom_provider'
   | 'none'
 
 export function getAnthropicApiKey(): null | string {
@@ -234,7 +235,7 @@ export function getAnthropicApiKeyWithSource(
   if (isCustomProviderActive()) {
     const profile = getActiveProviderProfile()
     if (profile) {
-      return { key: profile.apiKey, source: 'ANTHROPIC_AUTH_TOKEN' as ApiKeySource }
+      return { key: profile.apiKey, source: 'custom_provider' }
     }
   }
   // --bare: hermetic auth. Only ANTHROPIC_API_KEY env or apiKeyHelper from

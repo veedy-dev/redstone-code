@@ -57,7 +57,7 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
     const found = await discoverModels(baseUrl, value.trim())
     if (found.length > 0) {
       setDiscoveredModels(found)
-      finishSetup(found, value.trim())
+      finishSetup(found, value.trim(), found)
     } else {
       setStep('models_manual')
     }
@@ -67,10 +67,10 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
     if (!value.trim()) return
     const modelList = value.split(',').map(m => m.trim()).filter(Boolean)
     if (modelList.length === 0) return
-    finishSetup(modelList, apiKey)
+    finishSetup(modelList, apiKey, [])
   }
 
-  const finishSetup = (modelList: string[], key: string) => {
+  const finishSetup = (modelList: string[], key: string, discovered: string[]) => {
     const profile: ProviderProfile = {
       id: generateProfileId(),
       name,
@@ -78,8 +78,8 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
       baseUrl,
       apiKey: key,
       models: modelList,
-      cachedModels: discoveredModels.length > 0 ? discoveredModels : undefined,
-      cachedModelsAt: discoveredModels.length > 0 ? Date.now() : undefined,
+      cachedModels: discovered.length > 0 ? discovered : undefined,
+      cachedModelsAt: discovered.length > 0 ? Date.now() : undefined,
       defaultModel: modelList[0],
       createdAt: Date.now(),
       lastUsedAt: Date.now(),

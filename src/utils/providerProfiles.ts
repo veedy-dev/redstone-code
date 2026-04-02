@@ -137,6 +137,7 @@ export function updateProfileLastUsed(id: string): void {
 export function initActiveProviderProfile(): void {
   const profile = getActiveProviderProfile()
   if (profile) {
+    stashCurrentEnv()
     process.env.ANTHROPIC_BASE_URL = profile.baseUrl
     process.env.ANTHROPIC_AUTH_TOKEN = profile.apiKey
     delete process.env.ANTHROPIC_API_KEY
