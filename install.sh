@@ -134,8 +134,10 @@ clone_repo() {
     warn "$INSTALL_DIR already exists"
     if [ -d "$INSTALL_DIR/.git" ]; then
       info "Pulling latest changes..."
-      git -C "$INSTALL_DIR" pull --ff-only origin main 2>/dev/null || {
-        warn "Pull failed, continuing with existing copy"
+      git -C "$INSTALL_DIR" fetch origin main 2>/dev/null && \
+        git -C "$INSTALL_DIR" reset --hard origin/main 2>/dev/null && \
+        ok "Updated to latest main" || {
+        warn "Update failed, continuing with existing copy"
       }
     fi
   else

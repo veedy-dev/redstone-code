@@ -128,9 +128,11 @@ function Install-Repo {
         if (Test-Path (Join-Path $InstallDir '.git')) {
             Write-Info 'Pulling latest changes...'
             try {
-                git -C $InstallDir pull --ff-only origin main 2>$null
+                git -C $InstallDir fetch origin main 2>$null
+                git -C $InstallDir reset --hard origin/main 2>$null
+                Write-Ok 'Updated to latest main'
             } catch {
-                Write-Warn 'Pull failed, continuing with existing copy'
+                Write-Warn 'Update failed, continuing with existing copy'
             }
         }
     } else {
