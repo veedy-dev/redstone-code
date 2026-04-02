@@ -24,15 +24,17 @@ function Write-Fail  { param([string]$Msg) Write-Host "[x] $Msg" -ForegroundColo
 
 function Show-Header {
     Write-Host ''
-    Write-Host '                    ░█▀▄░█▀▀░█▀▄░█▀▀░▀█▀░█▀█░█▀█░█▀▀'   -ForegroundColor Red
-    Write-Host '        ----        ░█▀▄░█▀▀░█░█░▀▀█░░█░░█░█░█░█░█▀▀'   -ForegroundColor Red
-    Write-Host '      --×××-++      ░▀░▀░▀▀▀░▀▀░░▀▀▀░░▀░░▀▀▀░▀░▀░▀▀▀'   -ForegroundColor Red
-    Write-Host '    +-××××-×-+++'                                          -ForegroundColor Red
-    Write-Host '  ---×××-××----+++  ░█▀▀░█▀█░█▀▄░█▀▀'                     -ForegroundColor Red
-    Write-Host '  --×-××××--++-+++  ░█░░░█░█░█░█░█▀▀'                     -ForegroundColor Red
-    Write-Host '  +++-××--+--+++++  ░▀▀▀░▀▀▀░▀▀░░▀▀▀'                     -ForegroundColor Red
-    Write-Host '    ++++++++++++'                                          -ForegroundColor Red
-    Write-Host '       ++++++'                                             -ForegroundColor Red
+    Write-Host '                              ░█▀▄░█▀▀░█▀▄░█▀▀░▀█▀░█▀█░█▀█░█▀▀'   -ForegroundColor Red
+    Write-Host '           ------             ░█▀▄░█▀▀░█░█░▀▀█░░█░░█░█░█░█░█▀▀'   -ForegroundColor Red
+    Write-Host '         ----××--             ░▀░▀░▀▀▀░▀▀░░▀▀▀░░▀░░▀▀▀░▀░▀░▀▀▀'   -ForegroundColor Red
+    Write-Host '       --××××××++++'                                                -ForegroundColor Red
+    Write-Host '     ---×××××--××++++         ░█▀▀░█▀█░█▀▄░█▀▀'                    -ForegroundColor Red
+    Write-Host '   ----××××--+-××--+-×-++++   ░█░░░█░█░█░█░█▀▀'                    -ForegroundColor Red
+    Write-Host '   ---×--××××××--++++--++++   ░▀▀▀░▀▀▀░▀▀░░▀▀▀'                    -ForegroundColor Red
+    Write-Host '   ++++-×××××--+-×-++++++++'                                        -ForegroundColor Red
+    Write-Host '     ++++-×--++--++++++++'                                          -ForegroundColor Red
+    Write-Host '       ++++++++++++++++'                                            -ForegroundColor Red
+    Write-Host '           ++++++++'                                                -ForegroundColor Red
     Write-Host ''
     Write-Host '  A cleaner Claude Code' -ForegroundColor DarkGray
     Write-Host ''
