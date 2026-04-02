@@ -346,6 +346,37 @@ export async function getNpmDistTags(): Promise<NpmDistTags> {
   return { latest, stable: latest }
 }
 
+export async function getGitCloneRemoteSha(): Promise<string | null> {
+  const installDir = getGitCloneInstallDir()
+  const fetchResult = await execFileNoThrowWithCwd(
+    'git',
+    ['fetch', '--depth', '1', 'origin', 'main'],
+    { cwd: installDir, timeout: 15000 },
+  )
+  if (fetchResult.code !== 0) {
+    logForDebugging(`git fetch failed: ${fetchResult.stderr}`)
+    return null
+  }
+  const result = await execFileNoThrowWithCwd(
+    'git',
+    ['rev-parse', 'origin/main'],
+    { cwd: installDir, timeout: 5000 },
+  )
+  if (result.code !== 0) return null
+  return result.stdout.trim()
+}
+
+export async function getGitCloneLocalSha(): Promise<string | null> {
+  const installDir = getGitCloneInstallDir()
+  const result = await execFileNoThrowWithCwd(
+    'git',
+    ['rev-parse', 'HEAD'],
+    { cwd: installDir, timeout: 5000 },
+  )
+  if (result.code !== 0) return null
+  return result.stdout.trim()
+}
+
 function getGitCloneInstallDir(): string {
   const { dirname } = require('path') as typeof import('path')
   return dirname(process.execPath)

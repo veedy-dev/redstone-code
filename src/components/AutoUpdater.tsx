@@ -4,7 +4,7 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { useInterval } from 'usehooks-ts';
 import { useUpdateNotification } from '../hooks/useUpdateNotification.js';
 import { Box, Text } from '../ink.js';
-import { type AutoUpdaterResult, downloadGitCloneUpdate, getLatestVersion, getMaxVersion, type InstallStatus, installGlobalPackage, shouldSkipVersion } from '../utils/autoUpdater.js';
+import { type AutoUpdaterResult, downloadGitCloneUpdate, getGitCloneLocalSha, getGitCloneRemoteSha, getLatestVersion, getMaxVersion, type InstallStatus, installGlobalPackage, shouldSkipVersion } from '../utils/autoUpdater.js';
 import { getGlobalConfig, isAutoUpdaterDisabled } from '../utils/config.js';
 import { logForDebugging } from '../utils/debug.js';
 import { getCurrentInstallationType } from '../utils/doctorDiagnostic.js';
@@ -57,6 +57,35 @@ export function AutoUpdater({
       logForDebugging('AutoUpdater: Skipping update check in test/dev environment');
       return;
     }
+
+    // Git-clone installations: compare commit SHAs instead of semver
+    if (isGitCloneInstall) {
+      const isDisabled = isAutoUpdaterDisabled();
+      if (isDisabled) return;
+      const remoteSha = await getGitCloneRemoteSha();
+      const localSha = await getGitCloneLocalSha();
+      if (!remoteSha || !localSha || remoteSha === localSha) {
+        logForDebugging(`AutoUpdater: git-clone up to date (local=${localSha?.substring(0,7)}, remote=${remoteSha?.substring(0,7)})`);
+        return;
+      }
+      logForDebugging(`AutoUpdater: git-clone update available (local=${localSha.substring(0,7)} -> remote=${remoteSha.substring(0,7)})`);
+      const startTime = Date.now();
+      onChangeIsUpdating(true);
+      const installationType = 'git-clone';
+      const installStatus = await downloadGitCloneUpdate();
+      onChangeIsUpdating(false);
+      const remoteShort = remoteSha.substring(0, 7);
+      logEvent(installStatus === 'success' ? 'tengu_auto_updater_success' : 'tengu_auto_updater_fail', {
+        fromVersion: (localSha.substring(0, 7)) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+        toVersion: remoteShort as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+        durationMs: Date.now() - startTime,
+        wasMigrated: false,
+        installationType: installationType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+      });
+      onAutoUpdaterResult({ version: remoteShort, status: installStatus });
+      return;
+    }
+
     const currentVersion = MACRO.VERSION;
     const channel = getInitialSettings()?.autoUpdatesChannel ?? 'latest';
     let latestVersion = await getLatestVersion(channel);

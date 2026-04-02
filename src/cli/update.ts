@@ -130,16 +130,22 @@ export async function update() {
 
   if (isGitClone) {
     writeToStdout('\n')
-    const latestVersion = await getLatestVersion(channel)
+    const { getGitCloneRemoteSha, getGitCloneLocalSha, installGitCloneUpdate } = await import(
+      'src/utils/autoUpdater.js'
+    )
 
-    if (!latestVersion) {
+    writeToStdout('Checking for updates from GitHub...\n')
+    const remoteSha = await getGitCloneRemoteSha()
+    const localSha = await getGitCloneLocalSha()
+
+    if (!remoteSha) {
       process.stderr.write(
         chalk.red('Failed to check for updates from GitHub\n'),
       )
       await gracefulShutdown(1)
     }
 
-    if (latestVersion && gte(MACRO.VERSION, latestVersion)) {
+    if (remoteSha && localSha && remoteSha === localSha) {
       writeToStdout(
         chalk.green(`Redstone Code is up to date (${MACRO.DISPLAY_VERSION})`) +
           '\n',
@@ -147,14 +153,13 @@ export async function update() {
       await gracefulShutdown(0)
     }
 
+    const remoteShort = remoteSha ? remoteSha.substring(0, 7) : 'unknown'
+    const localShort = localSha ? localSha.substring(0, 7) : 'unknown'
     writeToStdout(
-      `New version available: ${latestVersion} (current: ${MACRO.VERSION})\n`,
+      `New commit available: ${remoteShort} (current: ${localShort})\n`,
     )
     writeToStdout('Updating from GitHub...\n')
 
-    const { installGitCloneUpdate } = await import(
-      'src/utils/autoUpdater.js'
-    )
     const status = await installGitCloneUpdate()
 
     switch (status) {
