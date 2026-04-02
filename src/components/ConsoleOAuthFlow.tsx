@@ -5,7 +5,7 @@ import { installOAuthTokens } from '../cli/handlers/auth.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { setClipboard } from '../ink/termio/osc.js';
 import { useTerminalNotification } from '../ink/useTerminalNotification.js';
-import { Box, Link, Text } from '../ink.js';
+import { Box, Link, Text, useInput } from '../ink.js';
 import { useKeybinding } from '../keybindings/useKeybinding.js';
 import { getSSLErrorHint } from '../services/api/errorUtils.js';
 import { sendNotification } from '../services/notifier.js';
@@ -20,13 +20,15 @@ import { Spinner } from './Spinner.js';
 import TextInput from './TextInput.js';
 import { ProviderSelectList } from './ProviderSelectList.js';
 import { ProviderSetupForm } from './ProviderSetupForm.js';
-import { getProviderProfiles, getActiveProviderProfileId, applyProviderProfile, deactivateProviderProfile, updateProfileLastUsed } from '../utils/providerProfiles.js';
+import { getProviderProfiles, getActiveProviderProfileId, applyProviderProfile, deactivateProviderProfile, updateProfileLastUsed, removeProviderProfile } from '../utils/providerProfiles.js';
 type Props = {
   onDone(): void;
   startingMessage?: string;
   mode?: 'login' | 'setup-token';
   forceLoginMethod?: 'claudeai' | 'console';
   onTextInputActive?: (active: boolean) => void;
+  onFocusedProfileId?: (id: string | null) => void;
+  onConfirmingDelete?: (confirming: boolean) => void;
 };
 type OAuthStatus = {
   state: 'idle';
@@ -65,7 +67,9 @@ export function ConsoleOAuthFlow({
   startingMessage,
   mode = 'login',
   forceLoginMethod: forceLoginMethodProp,
-  onTextInputActive
+  onTextInputActive,
+  onFocusedProfileId,
+  onConfirmingDelete
 }: Props): React.ReactNode {
   const settings = getSettings_DEPRECATED() || {};
   const forceLoginMethod = forceLoginMethodProp ?? settings.forceLoginMethod;
@@ -101,6 +105,44 @@ export function ConsoleOAuthFlow({
   const [showPastePrompt, setShowPastePrompt] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
   const textInputColumns = useTerminalSize().columns - PASTE_HERE_MSG.length - 1;
+
+  const [focusedValue, setFocusedValue] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  useInput((input, key, event) => {
+    if (pendingDeleteId) {
+      event.stopImmediatePropagation();
+      if (input === 'y' || input === 'Y') {
+        removeProviderProfile(pendingDeleteId);
+        setFocusedValue(null);
+        setPendingDeleteId(null);
+      } else if (input === 'n' || input === 'N' || key.escape) {
+        setPendingDeleteId(null);
+      }
+      return;
+    }
+    if (key.delete && focusedValue) {
+      const profiles = getProviderProfiles();
+      if (profiles.some(p => p.id === focusedValue)) {
+        event.stopImmediatePropagation();
+        setPendingDeleteId(focusedValue);
+      }
+    }
+  }, { isActive: oauthStatus.state === 'idle' });
+
+  useEffect(() => {
+    if (onFocusedProfileId) {
+      const profiles = getProviderProfiles();
+      const isProfile = focusedValue ? profiles.some(p => p.id === focusedValue) : false;
+      onFocusedProfileId(isProfile ? focusedValue : null);
+    }
+  }, [focusedValue, onFocusedProfileId]);
+
+  useEffect(() => {
+    if (onConfirmingDelete) {
+      onConfirmingDelete(pendingDeleteId !== null);
+    }
+  }, [pendingDeleteId, onConfirmingDelete]);
 
   // Log forced login method on mount
   useEffect(() => {
@@ -371,7 +413,7 @@ export function ConsoleOAuthFlow({
             </Box>
           </Box>}
       <Box paddingLeft={1} flexDirection="column" gap={1}>
-        <OAuthStatusMessage oauthStatus={oauthStatus} mode={mode} startingMessage={startingMessage} forcedMethodMessage={forcedMethodMessage} showPastePrompt={showPastePrompt} pastedCode={pastedCode} setPastedCode={setPastedCode} cursorOffset={cursorOffset} setCursorOffset={setCursorOffset} textInputColumns={textInputColumns} handleSubmitCode={handleSubmitCode} setOAuthStatus={setOAuthStatus} setLoginWithClaudeAi={setLoginWithClaudeAi} setLoginWithCodex={setLoginWithCodex} onDone={onDone} />
+        <OAuthStatusMessage oauthStatus={oauthStatus} mode={mode} startingMessage={startingMessage} forcedMethodMessage={forcedMethodMessage} showPastePrompt={showPastePrompt} pastedCode={pastedCode} setPastedCode={setPastedCode} cursorOffset={cursorOffset} setCursorOffset={setCursorOffset} textInputColumns={textInputColumns} handleSubmitCode={handleSubmitCode} setOAuthStatus={setOAuthStatus} setLoginWithClaudeAi={setLoginWithClaudeAi} setLoginWithCodex={setLoginWithCodex} onDone={onDone} onFocusProfile={setFocusedValue} pendingDeleteId={pendingDeleteId} />
       </Box>
     </Box>;
 }
@@ -391,6 +433,8 @@ type OAuthStatusMessageProps = {
   setLoginWithClaudeAi: (value: boolean) => void;
   setLoginWithCodex: (value: boolean) => void;
   onDone: () => void;
+  onFocusProfile: (value: string | null) => void;
+  pendingDeleteId: string | null;
 };
 function OAuthStatusMessage(t0) {
   const $ = _c(52);
@@ -409,7 +453,9 @@ function OAuthStatusMessage(t0) {
     setOAuthStatus,
     setLoginWithClaudeAi,
     setLoginWithCodex,
-    onDone
+    onDone,
+    onFocusProfile,
+    pendingDeleteId
   } = t0;
   switch (oauthStatus.state) {
     case "idle":
@@ -516,8 +562,9 @@ function OAuthStatusMessage(t0) {
                   setLoginWithClaudeAi(false);
                 }
               }
-            }} /></Box>;
-        const t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t2}{t3}{t7}</Box>;
+            }} onFocus={onFocusProfile} /></Box>;
+        const _pendingProfile = pendingDeleteId ? _profiles.find(p => p.id === pendingDeleteId) : null;
+        const t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t2}{t3}{t7}{_pendingProfile && <Text><Text color="red">Delete</Text> "<Text color="cyan">{_pendingProfile.name}</Text>"? (y/n)</Text>}</Box>;
         return t8;
       }
     case "provider_select":
