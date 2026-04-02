@@ -7,7 +7,7 @@ type Props = {
   provider: string
   plan: string
   connectionType: string
-  connectionDot: 'green' | 'yellow' | 'blue'
+  connectionDot: string
   cwd: string
   agentName?: string
   width: number
@@ -40,20 +40,23 @@ export function InfoTable({
   const mid = `├${'─'.repeat(LABEL_WIDTH)}┼${'─'.repeat(valueWidth)}┤`
   const bot = `└${'─'.repeat(LABEL_WIDTH)}┴${'─'.repeat(valueWidth)}┘`
 
-  const rows: Array<{ label: string; value: React.ReactNode; raw?: string }> = [
-    { label: 'Model', value: <Text>{model}</Text>, raw: model },
-    { label: 'Provider', value: <Text>{provider}</Text>, raw: provider },
-    { label: 'Plan', value: <Text>{plan}</Text>, raw: plan },
+  const dotStr = `● ${connectionType}`
+
+  const rows: Array<{ label: string; value: string; colored?: React.ReactNode }> = [
+    { label: 'Model', value: model },
+    { label: 'Provider', value: provider },
+    { label: 'Plan', value: plan },
     {
       label: 'Type',
-      value: (
-        <Text>
-          <Text color={connectionDot}>●</Text> {connectionType}
-        </Text>
+      value: dotStr,
+      colored: (
+        <>
+          <Text color={connectionDot}>●</Text>
+          <Text> {pad(connectionType, valueWidth - 3)}</Text>
+        </>
       ),
-      raw: `● ${connectionType}`,
     },
-    { label: 'Path', value: <Text dimColor>{displayPath}</Text>, raw: displayPath },
+    { label: 'Path', value: displayPath },
   ]
 
   return (
@@ -65,7 +68,11 @@ export function InfoTable({
             <Text dimColor>│</Text>
             <Text color="startupAccent">{pad(` ${row.label}`, LABEL_WIDTH)}</Text>
             <Text dimColor>│</Text>
-            <Text> {pad(row.raw ?? '', valueWidth - 1)}</Text>
+            {row.colored ? (
+              <Text> {row.colored}</Text>
+            ) : (
+              <Text> {pad(row.value, valueWidth - 1)}</Text>
+            )}
             <Text dimColor>│</Text>
           </Text>
           {i < rows.length - 1 && <Text dimColor>{mid}</Text>}

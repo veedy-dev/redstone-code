@@ -145,7 +145,9 @@ export async function update() {
       await gracefulShutdown(1)
     }
 
-    if (remoteSha && localSha && remoteSha === localSha) {
+    const hasPendingRebuild = getGlobalConfig().pendingRebuild === true
+
+    if (remoteSha && localSha && remoteSha === localSha && !hasPendingRebuild) {
       writeToStdout(
         chalk.green(`Redstone Code is up to date (${MACRO.DISPLAY_VERSION})`) +
           '\n',
@@ -153,11 +155,15 @@ export async function update() {
       await gracefulShutdown(0)
     }
 
-    const remoteShort = remoteSha ? remoteSha.substring(0, 7) : 'unknown'
-    const localShort = localSha ? localSha.substring(0, 7) : 'unknown'
-    writeToStdout(
-      `New commit available: ${chalk.bold(remoteShort)} (current: ${localShort})\n\n`,
-    )
+    if (hasPendingRebuild && remoteSha === localSha) {
+      writeToStdout('Pending rebuild from previous update...\n\n')
+    } else {
+      const remoteShort = remoteSha ? remoteSha.substring(0, 7) : 'unknown'
+      const localShort = localSha ? localSha.substring(0, 7) : 'unknown'
+      writeToStdout(
+        `New commit available: ${chalk.bold(remoteShort)} (current: ${localShort})\n\n`,
+      )
+    }
 
     const stepLabels: Record<string, string> = {
       fetch: 'Fetching latest',
@@ -193,6 +199,7 @@ export async function update() {
               ' again to rebuild.\n',
           )
         } else {
+          saveGlobalConfig(current => ({ ...current, pendingRebuild: undefined }))
           writeToStdout(
             chalk.green('Successfully updated!') +
               ' Restart to use the new version.\n',

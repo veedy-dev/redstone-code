@@ -70,7 +70,7 @@ const REDSTONE_TEXT = [
   '█████▄  ▄▄▄▄▄ ▄▄▄▄   ▄▄▄▄ ▄▄▄▄▄▄ ▄▄▄  ▄▄  ▄▄ ▄▄▄▄▄',
   '██▄▄██▄ ██▄▄  ██▀██ ███▄▄   ██  ██▀██ ███▄██ ██▄▄',
   '██   ██ ██▄▄▄ ████▀ ▄▄██▀   ██  ▀███▀ ██ ▀██ ██▄▄▄',
-  '',
+  ' ',
   '▄█████  ▄▄▄  ▄▄▄▄  ▄▄▄▄▄',
   '██     ██▀██ ██▀██ ██▄▄',
   '▀█████ ▀███▀ ████▀ ██▄▄▄',
@@ -89,16 +89,16 @@ function getProviderName(): string {
   }
 }
 
-function getConnectionInfo(): { type: string; dot: 'green' | 'yellow' | 'blue' } {
+function getConnectionInfo(): { type: string; dot: string } {
   const serverUrl = getDirectConnectServerUrl()
-  if (serverUrl) return { type: `Cloud`, dot: 'green' }
+  if (serverUrl) return { type: 'Cloud', dot: '#00CED1' }
   const { source } = getAuthTokenSource()
   if (source === 'claude.ai' || source === 'ANTHROPIC_AUTH_TOKEN' || source === 'CLAUDE_CODE_OAUTH_TOKEN') {
-    return { type: 'Cloud', dot: 'green' }
+    return { type: 'Cloud', dot: '#00CED1' }
   }
-  if (source === 'apiKeyHelper') return { type: 'API Key', dot: 'blue' }
-  if (source === 'none') return { type: 'Not configured', dot: 'yellow' }
-  return { type: 'Cloud', dot: 'green' }
+  if (source === 'apiKeyHelper') return { type: 'API Key', dot: '#6495ED' }
+  if (source === 'none') return { type: 'Not configured', dot: '#EAB308' }
+  return { type: 'Cloud', dot: '#00CED1' }
 }
 
 export function LogoV2(): React.ReactNode {
@@ -260,10 +260,6 @@ export function LogoV2(): React.ReactNode {
     </>
   )
 
-  const welcome = username
-    ? `Welcome back, ${username}`
-    : 'Welcome'
-
   const showTextArt = columns >= TEXT_ART_WIDTH + 6
 
   const textArt = showTextArt ? (
@@ -279,10 +275,6 @@ export function LogoV2(): React.ReactNode {
       <Text color="startupAccent" bold>Redstone Code</Text>
       <Text dimColor>v{version}</Text>
     </Box>
-  )
-
-  const welcomeRow = (
-    <Text bold>{welcome}</Text>
   )
 
   const versionText = (
@@ -318,7 +310,6 @@ export function LogoV2(): React.ReactNode {
         >
           {textArt}
           {titleRow}
-          {welcomeRow}
           {versionText}
           <Text>{' '}</Text>
           {infoTable}

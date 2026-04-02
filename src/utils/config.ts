@@ -188,6 +188,7 @@ export type GlobalConfig = {
   projects?: Record<string, ProjectConfig>
   numStartups: number
   installMethod?: InstallMethod
+  pendingRebuild?: boolean
   autoUpdates?: boolean
   // Flag to distinguish protection-based disabling from user preference
   autoUpdatesProtectedForNative?: boolean
@@ -647,6 +648,7 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = createDefaultGlobalConfig()
 export const GLOBAL_CONFIG_KEYS = [
   'apiKeyHelper',
   'installMethod',
+  'pendingRebuild',
   'autoUpdates',
   'autoUpdatesProtectedForNative',
   'theme',

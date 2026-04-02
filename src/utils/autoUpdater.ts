@@ -496,6 +496,7 @@ export async function installGitCloneUpdate(
       saveGlobalConfig(current => ({
         ...current,
         installMethod: 'git-clone',
+        pendingRebuild: true,
       }))
       return 'success'
     }
@@ -504,6 +505,7 @@ export async function installGitCloneUpdate(
     saveGlobalConfig(current => ({
       ...current,
       installMethod: 'git-clone',
+      pendingRebuild: undefined,
     }))
 
     return 'success'
