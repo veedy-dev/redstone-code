@@ -156,18 +156,48 @@ export async function update() {
     const remoteShort = remoteSha ? remoteSha.substring(0, 7) : 'unknown'
     const localShort = localSha ? localSha.substring(0, 7) : 'unknown'
     writeToStdout(
-      `New commit available: ${remoteShort} (current: ${localShort})\n`,
+      `New commit available: ${chalk.bold(remoteShort)} (current: ${localShort})\n\n`,
     )
-    writeToStdout('Updating from GitHub...\n')
 
-    const status = await installGitCloneUpdate()
+    const stepLabels: Record<string, string> = {
+      fetch: 'Fetching latest',
+      reset: 'Applying changes',
+      install: 'Installing dependencies',
+      build: 'Building binary',
+    }
+    let buildSkipped = false
+
+    const status = await installGitCloneUpdate((step, status) => {
+      const label = stepLabels[step] || step
+      if (status === 'start') {
+        writeToStdout(`  ◌ ${label}...\r`)
+      } else if (status === 'done') {
+        writeToStdout(`  ${chalk.green('●')} ${label}\n`)
+      } else if (status === 'fail') {
+        writeToStdout(`  ${chalk.red('✗')} ${label}\n`)
+      } else if (status === 'skip') {
+        buildSkipped = true
+        writeToStdout(`  ${chalk.yellow('○')} ${label} ${chalk.dim('(binary in use — rebuild on next launch)')}\n`)
+      }
+    })
+
+    writeToStdout('\n')
 
     switch (status) {
       case 'success':
-        writeToStdout(
-          chalk.green('Successfully updated! Restart to use the new version.') +
-            '\n',
-        )
+        if (buildSkipped) {
+          writeToStdout(
+            chalk.green('Source updated!') +
+              ' Close this session and run ' +
+              chalk.bold('redstone-code update') +
+              ' again to rebuild.\n',
+          )
+        } else {
+          writeToStdout(
+            chalk.green('Successfully updated!') +
+              ' Restart to use the new version.\n',
+          )
+        }
         break
       case 'install_failed':
         process.stderr.write(chalk.red('Update failed.\n'))

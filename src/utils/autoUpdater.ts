@@ -433,24 +433,86 @@ export async function downloadGitCloneUpdate(): Promise<InstallStatus> {
   }
 }
 
-export async function installGitCloneUpdate(): Promise<InstallStatus> {
-  const downloadStatus = await downloadGitCloneUpdate()
-  if (downloadStatus !== 'success') {
-    return downloadStatus
-  }
+export type UpdateStep = 'fetch' | 'reset' | 'install' | 'build'
+export type StepCallback = (step: UpdateStep, status: 'start' | 'done' | 'fail' | 'skip') => void
 
-  const installDir = getGitCloneInstallDir()
-  const buildResult = await execFileNoThrowWithCwd(
-    'bun',
-    ['run', 'build:dev:full'],
-    { cwd: installDir, timeout: 120000 },
-  )
-  if (buildResult.code !== 0) {
-    logForDebugging(`bun build failed: ${buildResult.stderr}`)
+export async function installGitCloneUpdate(
+  onStep?: StepCallback,
+): Promise<InstallStatus> {
+  if (!(await acquireLock())) {
+    return 'in_progress'
+  }
+  try {
+    const installDir = getGitCloneInstallDir()
+
+    onStep?.('fetch', 'start')
+    const fetchResult = await execFileNoThrowWithCwd(
+      'git',
+      ['fetch', '--depth', '1', 'origin', 'main'],
+      { cwd: installDir, timeout: 30000 },
+    )
+    if (fetchResult.code !== 0) {
+      onStep?.('fetch', 'fail')
+      logForDebugging(`git fetch failed: ${fetchResult.stderr}`)
+      return 'install_failed'
+    }
+    onStep?.('fetch', 'done')
+
+    onStep?.('reset', 'start')
+    const resetResult = await execFileNoThrowWithCwd(
+      'git',
+      ['reset', '--hard', 'origin/main'],
+      { cwd: installDir, timeout: 10000 },
+    )
+    if (resetResult.code !== 0) {
+      onStep?.('reset', 'fail')
+      logForDebugging(`git reset failed: ${resetResult.stderr}`)
+      return 'install_failed'
+    }
+    onStep?.('reset', 'done')
+
+    onStep?.('install', 'start')
+    const installResult = await execFileNoThrowWithCwd(
+      'bun',
+      ['install'],
+      { cwd: installDir, timeout: 60000 },
+    )
+    if (installResult.code !== 0) {
+      onStep?.('install', 'fail')
+      logForDebugging(`bun install failed: ${installResult.stderr}`)
+      return 'install_failed'
+    }
+    onStep?.('install', 'done')
+
+    onStep?.('build', 'start')
+    const buildResult = await execFileNoThrowWithCwd(
+      'bun',
+      ['run', 'build:dev:full'],
+      { cwd: installDir, timeout: 120000 },
+    )
+    if (buildResult.code !== 0) {
+      onStep?.('build', 'skip')
+      logForDebugging(`bun build failed (binary may be locked): ${buildResult.stderr}`)
+      saveGlobalConfig(current => ({
+        ...current,
+        installMethod: 'git-clone',
+      }))
+      return 'success'
+    }
+    onStep?.('build', 'done')
+
+    saveGlobalConfig(current => ({
+      ...current,
+      installMethod: 'git-clone',
+    }))
+
+    return 'success'
+  } catch (error) {
+    logForDebugging(`git-clone update failed: ${error}`)
     return 'install_failed'
+  } finally {
+    await releaseLock()
   }
-
-  return 'success'
 }
 
 /**
