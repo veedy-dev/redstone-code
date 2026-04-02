@@ -20,7 +20,7 @@ import { Spinner } from './Spinner.js';
 import TextInput from './TextInput.js';
 import { ProviderSelectList } from './ProviderSelectList.js';
 import { ProviderSetupForm } from './ProviderSetupForm.js';
-import { getProviderProfiles } from '../utils/providerProfiles.js';
+import { getProviderProfiles, getActiveProviderProfileId, applyProviderProfile, deactivateProviderProfile, updateProfileLastUsed } from '../utils/providerProfiles.js';
 type Props = {
   onDone(): void;
   startingMessage?: string;
@@ -423,49 +423,65 @@ function OAuthStatusMessage(t0) {
         } else {
           t3 = $[2];
         }
-        let t4;
-        if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
-          t4 = {
-            label: <Text>Claude account with subscription ·{" "}<Text dimColor={true}>Pro, Max, Team, or Enterprise</Text>{false && <Text>{"\n"}<Text color="warning">[ANT-ONLY]</Text>{" "}<Text dimColor={true}>Please use this option unless you need to login to a special org for accessing sensitive data (e.g. customer data, HIPI data) with the Console option</Text></Text>}{"\n"}</Text>,
-            value: "claudeai"
-          };
-          $[3] = t4;
-        } else {
-          t4 = $[3];
+        const _profiles = getProviderProfiles();
+        const _activeProfileId = getActiveProviderProfileId();
+        const _hasProfiles = _profiles.length > 0;
+        const t6 = [];
+        if (_hasProfiles) {
+          t6.push({
+            label: <Text>Anthropic{_activeProfileId === null ? <Text dimColor={true}> (current)</Text> : ""} · <Text dimColor={true}>Default account</Text>{"\n"}</Text>,
+            value: "__anthropic__"
+          });
+          for (const _p of _profiles) {
+            const _isCurrent = _p.id === _activeProfileId;
+            t6.push({
+              label: <Text>{_p.name}{_isCurrent ? <Text dimColor={true}> (current)</Text> : ""}{_p.defaultModel ? <Text> · <Text dimColor={true}>{_p.defaultModel}</Text></Text> : ""}{"\n"}</Text>,
+              value: _p.id
+            });
+          }
+          t6.push({
+            label: <Text dimColor={true}>Set up new login:</Text>,
+            value: "__separator__",
+            disabled: true
+          });
         }
-        let t5;
-        if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-          t5 = {
-            label: <Text>Anthropic Console account ·{" "}<Text dimColor={true}>API usage billing</Text>{"\n"}</Text>,
-            value: "console"
-          };
-          $[4] = t5;
+        if (!_hasProfiles) {
+          t3 = <Text>Select login method:</Text>;
         } else {
-          t5 = $[4];
+          t3 = <Text>Switch provider or login:</Text>;
         }
-        let t6;
-        if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-          t6 = [t4, t5, {
-            label: <Text>Custom provider ·{" "}<Text dimColor={true}>Anthropic-compatible endpoint (e.g., MiniMax)</Text>{"\n"}</Text>,
-            value: "custom_provider"
-          }, {
-            label: <Text>OpenAI Codex account ·{" "}<Text dimColor={true}>ChatGPT Plus/Pro subscription</Text>{"\n"}</Text>,
-            value: "codex"
-          }];
-          $[5] = t6;
-        } else {
-          t6 = $[5];
-        }
-        let t7;
-        if ($[6] !== setLoginWithClaudeAi || $[7] !== setOAuthStatus || $[8] !== setLoginWithCodex) {
-          t7 = <Box><Select options={t6} onChange={value_0 => {
+        t6.push({
+          label: <Text>Claude account with subscription ·{" "}<Text dimColor={true}>Pro, Max, Team, or Enterprise</Text>{false && <Text>{"\n"}<Text color="warning">[ANT-ONLY]</Text>{" "}<Text dimColor={true}>Please use this option unless you need to login to a special org for accessing sensitive data (e.g. customer data, HIPI data) with the Console option</Text></Text>}{"\n"}</Text>,
+          value: "claudeai"
+        });
+        t6.push({
+          label: <Text>Anthropic Console account ·{" "}<Text dimColor={true}>API usage billing</Text>{"\n"}</Text>,
+          value: "console"
+        });
+        t6.push({
+          label: <Text>Custom provider ·{" "}<Text dimColor={true}>{_hasProfiles ? "Add new Anthropic-compatible endpoint" : "Anthropic-compatible endpoint (e.g., MiniMax)"}</Text>{"\n"}</Text>,
+          value: "custom_provider"
+        });
+        t6.push({
+          label: <Text>OpenAI Codex account ·{" "}<Text dimColor={true}>ChatGPT Plus/Pro subscription</Text>{"\n"}</Text>,
+          value: "codex"
+        });
+        const t7 = <Box><Select options={t6} onChange={value_0 => {
+              if (value_0 === "__anthropic__") {
+                deactivateProviderProfile();
+                onDone();
+                return;
+              }
+              const _selectedProfile = _profiles.find(p => p.id === value_0);
+              if (_selectedProfile) {
+                applyProviderProfile(_selectedProfile);
+                updateProfileLastUsed(_selectedProfile.id);
+                onDone();
+                return;
+              }
               if (value_0 === "custom_provider") {
                 logEvent("tengu_oauth_custom_provider_selected", {});
-                if (getProviderProfiles().length > 0) {
-                  setOAuthStatus({ state: "provider_select" });
-                } else {
-                  setOAuthStatus({ state: "provider_setup" });
-                }
+                setOAuthStatus({ state: "provider_setup" });
               } else if (value_0 === "codex") {
                 logEvent("tengu_oauth_codex_selected", {});
                 setLoginWithCodex(true);
@@ -485,22 +501,7 @@ function OAuthStatusMessage(t0) {
                 }
               }
             }} /></Box>;
-          $[6] = setLoginWithClaudeAi;
-          $[7] = setOAuthStatus;
-          $[8] = setLoginWithCodex;
-          $[9] = t7;
-        } else {
-          t7 = $[9];
-        }
-        let t8;
-        if ($[10] !== t2 || $[11] !== t7) {
-          t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t2}{t3}{t7}</Box>;
-          $[10] = t2;
-          $[11] = t7;
-          $[12] = t8;
-        } else {
-          t8 = $[12];
-        }
+        const t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t2}{t3}{t7}</Box>;
         return t8;
       }
     case "provider_select":
