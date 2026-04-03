@@ -182,7 +182,7 @@ export function LocalProviderSetup({ onDone }: Props): React.ReactNode {
                   return
                 }
                 setError(null)
-                setManualUrl(value.trim())
+                setManualUrl(value.trim().replace(/\/$/, ''))
                 setCursorOffset(0)
                 setStep('manual_model')
               }}
