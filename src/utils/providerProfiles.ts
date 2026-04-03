@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto'
 import type { ProviderProfile } from './config.js'
 import { getGlobalConfig, saveGlobalConfig } from './config.js'
+import { setMainLoopModelOverride } from '../bootstrap/state.js'
 
 let envStash: Record<string, string | undefined> | null = null
 
@@ -58,6 +59,7 @@ export function removeProviderProfile(id: string): void {
   })
   if (wasActive) {
     restoreStashedEnv()
+    setMainLoopModelOverride(undefined)
   }
 }
 
@@ -166,4 +168,36 @@ export function initActiveProviderProfile(): void {
       process.env.ANTHROPIC_MODEL = profile.defaultModel
     }
   }
+}
+
+export function addModelToProfile(profileId: string, model: string): ProviderProfile | null {
+  const profiles = getProviderProfiles()
+  const profile = profiles.find(p => p.id === profileId)
+  if (!profile || profile.models.includes(model)) return null
+  const updated = { ...profile, models: [...profile.models, model] }
+  saveProviderProfile(updated)
+  return updated
+}
+
+export function removeModelFromProfile(profileId: string, model: string): ProviderProfile | null {
+  const profiles = getProviderProfiles()
+  const profile = profiles.find(p => p.id === profileId)
+  if (!profile || profile.models.length <= 1) return null
+  const newModels = profile.models.filter(m => m !== model)
+  const updated = {
+    ...profile,
+    models: newModels,
+    defaultModel: profile.defaultModel === model ? newModels[0] : profile.defaultModel,
+  }
+  saveProviderProfile(updated)
+  return updated
+}
+
+export function setDefaultModelForProfile(profileId: string, model: string): ProviderProfile | null {
+  const profiles = getProviderProfiles()
+  const profile = profiles.find(p => p.id === profileId)
+  if (!profile || !profile.models.includes(model)) return null
+  const updated = { ...profile, defaultModel: model }
+  saveProviderProfile(updated)
+  return updated
 }

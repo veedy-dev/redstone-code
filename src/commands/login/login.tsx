@@ -51,7 +51,9 @@ export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXComma
       // Increment authVersion to trigger re-fetching of auth-dependent data in hooks (e.g., MCP servers)
       context.setAppState(prev => ({
         ...prev,
-        authVersion: prev.authVersion + 1
+        authVersion: prev.authVersion + 1,
+        mainLoopModel: process.env.ANTHROPIC_MODEL || null,
+        mainLoopModelForSession: null,
       }));
     }
     onDone(success ? 'Login successful' : 'Login interrupted');
@@ -95,7 +97,7 @@ export function Login(props) {
   const inputGuide = (exitState) => {
     if (exitState.pending) return <Text>Press {exitState.keyName} again to exit</Text>;
     if (confirmingDelete) return <Text>y to confirm | n to cancel</Text>;
-    if (focusedProfileId) return <Text><ConfigurableShortcutHint action="confirm:no" context="Confirmation" fallback="Esc" description="cancel" />{' | Del to delete'}</Text>;
+    if (focusedProfileId) return <Text><ConfigurableShortcutHint action="confirm:no" context="Confirmation" fallback="Esc" description="cancel" />{' | Del to delete | E to edit models'}</Text>;
     return <ConfigurableShortcutHint action="confirm:no" context="Confirmation" fallback="Esc" description="cancel" />;
   };
   return <Dialog title="Login" onCancel={t0} color="permission" inputGuide={inputGuide} isCancelActive={t3_isCancelActive}>{t2}</Dialog>;

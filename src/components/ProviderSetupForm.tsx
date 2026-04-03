@@ -4,37 +4,30 @@ import TextInput from './TextInput.js'
 import { Spinner } from './Spinner.js'
 import {
   generateProfileId,
-  discoverModels,
   saveProviderProfile,
   applyProviderProfile,
   updateProfileLastUsed,
 } from '../utils/providerProfiles.js'
+import { findProviderForUrl } from '../utils/modelsRegistry.js'
 import type { ProviderProfile } from '../utils/config.js'
 
-type SetupStep = 'name' | 'url' | 'key' | 'models_manual' | 'discovering' | 'done'
+type SetupStep = 'url' | 'looking_up' | 'name' | 'key' | 'discovering' | 'models_manual' | 'done'
 
 type Props = {
   onDone: (profile: ProviderProfile | null) => void
 }
 
 export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
-  const [step, setStep] = useState<SetupStep>('name')
+  const [step, setStep] = useState<SetupStep>('url')
   const [name, setName] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [models, setModels] = useState('')
-  const [discoveredModels, setDiscoveredModels] = useState<string[]>([])
+  const [detectedModels, setDetectedModels] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [cursorOffset, setCursorOffset] = useState(0)
 
-  const handleNameSubmit = (value: string) => {
-    if (!value.trim()) return
-    setName(value.trim())
-    setCursorOffset(0)
-    setStep('url')
-  }
-
-  const handleUrlSubmit = (value: string) => {
+  const handleUrlSubmit = async (value: string) => {
     if (!value.trim()) return
     try {
       new URL(value.trim())
@@ -43,21 +36,34 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
       return
     }
     setError(null)
-    setBaseUrl(value.trim().replace(/\/$/, ''))
+    const url = value.trim().replace(/\/$/, '')
+    setBaseUrl(url)
+    setCursorOffset(0)
+    setStep('looking_up')
+
+    const result = await findProviderForUrl(url)
+    if (result) {
+      setName(result.name)
+      setDetectedModels(result.models)
+    }
+    setStep('name')
+  }
+
+  const handleNameSubmit = (value: string) => {
+    if (!value.trim()) return
+    setName(value.trim())
     setCursorOffset(0)
     setStep('key')
   }
 
-  const handleKeySubmit = async (value: string) => {
+  const handleKeySubmit = (value: string) => {
     if (!value.trim()) return
-    setApiKey(value.trim())
+    const key = value.trim()
+    setApiKey(key)
     setCursorOffset(0)
-    setStep('discovering')
 
-    const found = await discoverModels(baseUrl, value.trim())
-    if (found.length > 0) {
-      setDiscoveredModels(found)
-      finishSetup(found, value.trim(), found)
+    if (detectedModels.length > 0) {
+      finishSetup(detectedModels, key, detectedModels)
     } else {
       setStep('models_manual')
     }
@@ -92,28 +98,10 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
   }
 
   switch (step) {
-    case 'name':
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text bold>Set up custom Anthropic-compatible provider</Text>
-          <Box>
-            <Text>Provider name: </Text>
-            <TextInput
-              value={name}
-              onChange={setName}
-              onSubmit={handleNameSubmit}
-              columns={80}
-              cursorOffset={cursorOffset}
-              onChangeCursorOffset={setCursorOffset}
-            />
-          </Box>
-        </Box>
-      )
-
     case 'url':
       return (
         <Box flexDirection="column" gap={1}>
-          <Text bold>Set up {name}</Text>
+          <Text bold>Set up custom Anthropic-compatible provider</Text>
           {error && <Text color="red">{error}</Text>}
           <Box>
             <Text>Base URL: </Text>
@@ -121,9 +109,47 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
               value={baseUrl}
               onChange={setBaseUrl}
               onSubmit={handleUrlSubmit}
+              placeholder="https://api.example.com/v1"
               columns={80}
               cursorOffset={cursorOffset}
               onChangeCursorOffset={setCursorOffset}
+              showCursor
+            />
+          </Box>
+        </Box>
+      )
+
+    case 'looking_up':
+      return (
+        <Box flexDirection="column" gap={1}>
+          <Text bold>Set up custom Anthropic-compatible provider</Text>
+          <Text dimColor>Base URL: {baseUrl}</Text>
+          <Box>
+            <Spinner />
+            <Text> Looking up provider...</Text>
+          </Box>
+        </Box>
+      )
+
+    case 'name':
+      return (
+        <Box flexDirection="column" gap={1}>
+          <Text bold>Set up custom Anthropic-compatible provider</Text>
+          <Text dimColor>Base URL: {baseUrl}</Text>
+          {detectedModels.length > 0 && (
+            <Text color="green">Found {detectedModels.length} model{detectedModels.length !== 1 ? 's' : ''} from models.dev registry</Text>
+          )}
+          <Box>
+            <Text>Provider name: </Text>
+            <TextInput
+              value={name}
+              onChange={setName}
+              onSubmit={handleNameSubmit}
+              placeholder="e.g., MiniMax-x.x, GLM-x"
+              columns={80}
+              cursorOffset={cursorOffset}
+              onChangeCursorOffset={setCursorOffset}
+              showCursor
             />
           </Box>
         </Box>
@@ -140,10 +166,12 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
               value={apiKey}
               onChange={setApiKey}
               onSubmit={handleKeySubmit}
+              placeholder="sk-..."
               mask="*"
               columns={80}
               cursorOffset={cursorOffset}
               onChangeCursorOffset={setCursorOffset}
+              showCursor
             />
           </Box>
         </Box>
@@ -155,7 +183,7 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
           <Text bold>Set up {name}</Text>
           <Box>
             <Spinner />
-            <Text>Discovering models...</Text>
+            <Text> Looking up models...</Text>
           </Box>
         </Box>
       )
@@ -164,16 +192,18 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
       return (
         <Box flexDirection="column" gap={1}>
           <Text bold>Set up {name}</Text>
-          <Text dimColor>Could not auto-discover models from the API.</Text>
+          <Text dimColor>No models found in the registry for this provider.</Text>
           <Box>
             <Text>Enter model names (comma-separated): </Text>
             <TextInput
               value={models}
               onChange={setModels}
               onSubmit={handleModelsSubmit}
+              placeholder="model-name-1, model-name-2"
               columns={80}
               cursorOffset={cursorOffset}
               onChangeCursorOffset={setCursorOffset}
+              showCursor
             />
           </Box>
         </Box>
