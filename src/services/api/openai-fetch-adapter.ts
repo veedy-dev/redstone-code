@@ -95,6 +95,10 @@ type StreamState = {
   textBlockStarted: boolean
 }
 
+function formatSSE(event: string, data: string): string {
+  return `event: ${event}\ndata: ${data}\n\n`
+}
+
 function translateStreamChunk(line: string, state: StreamState): string[] {
   if (!line.startsWith('data: ')) return []
   const data = line.slice(6).trim()
@@ -102,11 +106,11 @@ function translateStreamChunk(line: string, state: StreamState): string[] {
     const stopReason = state.hadToolCalls ? 'tool_use' : 'end_turn'
     const events: string[] = []
     if (state.textBlockStarted || !state.hadToolCalls) {
-      events.push(`event: content_block_stop\ndata: ${JSON.stringify({ type: 'content_block_stop', index: state.blockIndex })}\n`)
+      events.push(formatSSE('content_block_stop', JSON.stringify({ type: 'content_block_stop', index: state.blockIndex })))
     }
     events.push(
-      `event: message_delta\ndata: ${JSON.stringify({ type: 'message_delta', delta: { stop_reason: stopReason, stop_sequence: null }, usage: { output_tokens: 0 } })}\n`,
-      `event: message_stop\ndata: ${JSON.stringify({ type: 'message_stop' })}\n`,
+      formatSSE('message_delta', JSON.stringify({ type: 'message_delta', delta: { stop_reason: stopReason, stop_sequence: null }, usage: { output_tokens: 0 } })),
+      formatSSE('message_stop', JSON.stringify({ type: 'message_stop' })),
     )
     return events
   }
@@ -123,14 +127,10 @@ function translateStreamChunk(line: string, state: StreamState): string[] {
 
   if (delta.content) {
     if (!state.textBlockStarted) {
-      events.push(
-        `event: content_block_start\ndata: ${JSON.stringify({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })}\n`
-      )
+      events.push(formatSSE('content_block_start', JSON.stringify({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })))
       state.textBlockStarted = true
     }
-    events.push(
-      `event: content_block_delta\ndata: ${JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: delta.content } })}\n`
-    )
+    events.push(formatSSE('content_block_delta', JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: delta.content } })))
   }
 
   if (delta.tool_calls) {
@@ -138,22 +138,16 @@ function translateStreamChunk(line: string, state: StreamState): string[] {
     for (const tc of delta.tool_calls) {
       if (tc.function?.name) {
         state.blockIndex++
-        events.push(
-          `event: content_block_start\ndata: ${JSON.stringify({ type: 'content_block_start', index: state.blockIndex, content_block: { type: 'tool_use', id: tc.id || `call_${state.blockIndex}`, name: tc.function.name } })}\n`
-        )
+        events.push(formatSSE('content_block_start', JSON.stringify({ type: 'content_block_start', index: state.blockIndex, content_block: { type: 'tool_use', id: tc.id || `call_${state.blockIndex}`, name: tc.function.name } })))
       }
       if (tc.function?.arguments) {
-        events.push(
-          `event: content_block_delta\ndata: ${JSON.stringify({ type: 'content_block_delta', index: state.blockIndex, delta: { type: 'input_json_delta', partial_json: tc.function.arguments } })}\n`
-        )
+        events.push(formatSSE('content_block_delta', JSON.stringify({ type: 'content_block_delta', index: state.blockIndex, delta: { type: 'input_json_delta', partial_json: tc.function.arguments } })))
       }
     }
   }
 
   if (choice.finish_reason) {
-    events.push(
-      `event: content_block_stop\ndata: ${JSON.stringify({ type: 'content_block_stop', index: state.blockIndex })}\n`
-    )
+    events.push(formatSSE('content_block_stop', JSON.stringify({ type: 'content_block_stop', index: state.blockIndex })))
   }
 
   return events
@@ -249,7 +243,7 @@ export function createOpenAIFetch(baseUrl: string, apiKey?: string) {
 
     const stream = new ReadableStream({
       async start(controller) {
-        controller.enqueue(encoder.encode(`event: message_start\ndata: ${messageStartEvent}\n\n`))
+        controller.enqueue(encoder.encode(formatSSE('message_start', messageStartEvent)))
 
         try {
           while (true) {
@@ -265,7 +259,7 @@ export function createOpenAIFetch(baseUrl: string, apiKey?: string) {
               if (!trimmed) continue
               const events = translateStreamChunk(trimmed, streamState)
               for (const event of events) {
-                controller.enqueue(encoder.encode(event + '\n'))
+                controller.enqueue(encoder.encode(event))
               }
             }
           }
@@ -273,7 +267,7 @@ export function createOpenAIFetch(baseUrl: string, apiKey?: string) {
           if (buffer.trim()) {
             const events = translateStreamChunk(buffer.trim(), streamState)
             for (const event of events) {
-              controller.enqueue(encoder.encode(event + '\n'))
+              controller.enqueue(encoder.encode(event))
             }
           }
         } catch (err) {
