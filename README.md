@@ -5,7 +5,7 @@
 <h1 align="center">Redstone Code</h1>
 
 <p align="center">
-  <strong>An agentic coding CLI, rebuilt from the ground up.</strong><br>
+  <strong>Harness tools. Not guardrails.</strong><br>
   Multi-provider support. No telemetry. No guardrails. All experimental features unlocked.<br>
   One binary, zero callbacks home.
 </p>
