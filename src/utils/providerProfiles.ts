@@ -14,6 +14,7 @@ const STASH_KEYS = [
   'OPENAI_BASE_URL',
   'OPENAI_API_KEY',
   'OPENAI_MODEL',
+  'CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK',
 ] as const
 
 export function generateProfileId(): string {
@@ -159,6 +160,7 @@ export function updateProfileLastUsed(id: string): void {
 function setEnvForProfile(profile: ProviderProfile): void {
   if (profile.type === 'openai-compatible') {
     process.env.CLAUDE_CODE_USE_OPENAI = '1'
+    process.env.CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK = '1'
     process.env.OPENAI_BASE_URL = profile.baseUrl
     if (profile.apiKey) {
       process.env.OPENAI_API_KEY = profile.apiKey
@@ -178,6 +180,7 @@ function setEnvForProfile(profile: ProviderProfile): void {
       process.env.ANTHROPIC_MODEL = profile.defaultModel
     }
     delete process.env.CLAUDE_CODE_USE_OPENAI
+    delete process.env.CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK
     delete process.env.OPENAI_BASE_URL
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_MODEL
