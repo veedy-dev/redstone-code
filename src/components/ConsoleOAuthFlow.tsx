@@ -112,6 +112,7 @@ export function ConsoleOAuthFlow({
 
   const [focusedValue, setFocusedValue] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [modelsTextInputActive, setModelsTextInputActive] = useState(false);
 
   useInput((input, key, event) => {
     if (pendingDeleteId) {
@@ -136,7 +137,7 @@ export function ConsoleOAuthFlow({
         setPendingDeleteId(focusedValue);
       }
     }
-    if (input === 'e' && focusedValue) {
+    if ((input === 'e' || input === 'E') && focusedValue) {
       const profiles = getProviderProfiles();
       if (profiles.some(p => p.id === focusedValue)) {
         event.stopImmediatePropagation();
@@ -393,9 +394,9 @@ export function ConsoleOAuthFlow({
   }, [oauthService]);
   useEffect(() => {
     if (onTextInputActive) {
-      onTextInputActive(oauthStatus.state === 'provider_setup' || oauthStatus.state === 'provider_models');
+      onTextInputActive(oauthStatus.state === 'provider_setup' || modelsTextInputActive);
     }
-  }, [oauthStatus.state, onTextInputActive]);
+  }, [oauthStatus.state, onTextInputActive, modelsTextInputActive]);
   return <Box flexDirection="column" gap={1}>
       {oauthStatus.state === 'waiting_for_login' && showPastePrompt && <Box flexDirection="column" key="urlToCopy" gap={1} paddingBottom={1}>
           <Box paddingX={1}>
@@ -605,7 +606,8 @@ function OAuthStatusMessage(t0) {
     case "provider_models":
       return <ProviderModelsForm
         profileId={oauthStatus.profileId}
-        onDone={() => setOAuthStatus({ state: 'idle' })}
+        onDone={() => { setModelsTextInputActive(false); setOAuthStatus({ state: 'idle' }); }}
+        onTextInputActive={setModelsTextInputActive}
       />;
     case "platform_setup":
       {
