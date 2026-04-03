@@ -92,7 +92,20 @@ function getProviderName(): string {
   }
 }
 
+function isLocalUrl(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase()
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0' || hostname.endsWith('.local')
+  } catch {
+    return false
+  }
+}
+
 function getConnectionInfo(): { type: string; dot: string } {
+  const activeProfile = getActiveProviderProfile()
+  if (activeProfile && isLocalUrl(activeProfile.baseUrl)) {
+    return { type: 'Local', dot: '#22C55E' }
+  }
   const serverUrl = getDirectConnectServerUrl()
   if (serverUrl) return { type: 'Cloud', dot: '#00CED1' }
   const { source } = getAuthTokenSource()

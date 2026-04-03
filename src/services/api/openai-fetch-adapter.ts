@@ -92,6 +92,7 @@ function translateTools(tools: Array<{ name: string; description?: string; input
 type StreamState = {
   blockIndex: number
   hadToolCalls: boolean
+  textBlockStarted: boolean
 }
 
 function translateStreamChunk(line: string, state: StreamState): string[] {
@@ -99,11 +100,15 @@ function translateStreamChunk(line: string, state: StreamState): string[] {
   const data = line.slice(6).trim()
   if (data === '[DONE]') {
     const stopReason = state.hadToolCalls ? 'tool_use' : 'end_turn'
-    return [
-      `event: content_block_stop\ndata: ${JSON.stringify({ type: 'content_block_stop', index: state.blockIndex })}\n`,
+    const events: string[] = []
+    if (state.textBlockStarted || !state.hadToolCalls) {
+      events.push(`event: content_block_stop\ndata: ${JSON.stringify({ type: 'content_block_stop', index: state.blockIndex })}\n`)
+    }
+    events.push(
       `event: message_delta\ndata: ${JSON.stringify({ type: 'message_delta', delta: { stop_reason: stopReason, stop_sequence: null }, usage: { output_tokens: 0 } })}\n`,
       `event: message_stop\ndata: ${JSON.stringify({ type: 'message_stop' })}\n`,
-    ]
+    )
+    return events
   }
 
   let chunk: any
@@ -117,6 +122,12 @@ function translateStreamChunk(line: string, state: StreamState): string[] {
   if (!delta) return []
 
   if (delta.content) {
+    if (!state.textBlockStarted) {
+      events.push(
+        `event: content_block_start\ndata: ${JSON.stringify({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })}\n`
+      )
+      state.textBlockStarted = true
+    }
     events.push(
       `event: content_block_delta\ndata: ${JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: delta.content } })}\n`
     )
@@ -212,7 +223,7 @@ export function createOpenAIFetch(baseUrl: string, apiKey?: string) {
       })
     }
 
-    const streamState: StreamState = { blockIndex: 0, hadToolCalls: false }
+    const streamState: StreamState = { blockIndex: 0, hadToolCalls: false, textBlockStarted: false }
 
     const messageStartEvent = JSON.stringify({
       type: 'message_start',
@@ -227,11 +238,6 @@ export function createOpenAIFetch(baseUrl: string, apiKey?: string) {
         usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
       },
     })
-    const contentStartEvent = JSON.stringify({
-      type: 'content_block_start',
-      index: 0,
-      content_block: { type: 'text', text: '' },
-    })
 
     const encoder = new TextEncoder()
     const decoder = new TextDecoder()
@@ -244,7 +250,6 @@ export function createOpenAIFetch(baseUrl: string, apiKey?: string) {
     const stream = new ReadableStream({
       async start(controller) {
         controller.enqueue(encoder.encode(`event: message_start\ndata: ${messageStartEvent}\n\n`))
-        controller.enqueue(encoder.encode(`event: content_block_start\ndata: ${contentStartEvent}\n\n`))
 
         try {
           while (true) {
