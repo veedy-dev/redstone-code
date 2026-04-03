@@ -316,26 +316,19 @@ export function formatModelAndBilling(
  */
 export function getRecentReleaseNotesSync(
   maxItems: number,
-  currentVersion: string = MACRO.VERSION,
-  lastSeenVersion?: string | null,
+  _currentVersion?: string,
+  _lastSeenVersion?: string | null,
 ): string[] {
-  // For ants, use bundled changelog
-  if (process.env.USER_TYPE === 'ant') {
-    const changelog = MACRO.VERSION_CHANGELOG
-    if (changelog) {
-      const commits = changelog.trim().split('\n').filter(Boolean)
-      return commits.slice(0, maxItems)
-    }
+  try {
+    const { execSync } = require('child_process')
+    const result = execSync(`git log --oneline -${maxItems}`, {
+      encoding: 'utf-8',
+      timeout: 3000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    if (!result) return []
+    return result.trim().split('\n').filter(Boolean)
+  } catch {
     return []
   }
-
-  const changelog = getStoredChangelogFromMemory()
-  if (!changelog) {
-    return []
-  }
-
-  return getRecentReleaseNotes(currentVersion, lastSeenVersion, changelog).slice(
-    0,
-    maxItems,
-  )
 }

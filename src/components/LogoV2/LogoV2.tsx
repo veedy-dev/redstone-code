@@ -166,8 +166,9 @@ export function LogoV2(): React.ReactNode {
     if (showOnboarding) incrementProjectOnboardingSeenCount()
   }, [config, showOnboarding])
 
+  const hasContent = changelog.length > 0 || activities.length > 0
   const isCondensedMode =
-    !hasReleaseNotes &&
+    !hasContent &&
     !showOnboarding &&
     !isEnvTruthy(process.env.CLAUDE_CODE_FORCE_FULL_LOGO)
 
