@@ -52,7 +52,7 @@ export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXComma
       context.setAppState(prev => ({
         ...prev,
         authVersion: prev.authVersion + 1,
-        mainLoopModel: process.env.ANTHROPIC_MODEL || null,
+        mainLoopModel: process.env.ANTHROPIC_MODEL || process.env.OPENAI_MODEL || null,
         mainLoopModelForSession: null,
       }));
     }

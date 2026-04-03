@@ -2,6 +2,8 @@ import { getDirectConnectServerUrl, getSessionId } from '../bootstrap/state.js'
 import { stringWidth } from '../ink/stringWidth.js'
 import type { LogOption } from '../types/logs.js'
 import { getSubscriptionName, isClaudeAISubscriber, isCodexSubscriber } from './auth.js'
+import { getActiveProviderProfile } from './providerProfiles.js'
+import { isLocalUrl } from './networkUtils.js'
 import { getCwd } from './cwd.js'
 import { getDisplayPath } from './file.js'
 import {
@@ -256,11 +258,14 @@ export function getLogoDisplayData(): {
   const cwd = serverUrl
     ? `${displayPath} in ${serverUrl.replace(/^https?:\/\//, '')}`
     : displayPath
-  const billingType = isClaudeAISubscriber()
-    ? getSubscriptionName()
-    : isCodexSubscriber()
-      ? 'Codex API Billing'
-      : 'API Usage Billing'
+  const activeProfile = getActiveProviderProfile()
+  const billingType = activeProfile
+    ? (isLocalUrl(activeProfile.baseUrl) ? 'Free (Local)' : 'Custom Provider')
+    : isClaudeAISubscriber()
+      ? getSubscriptionName()
+      : isCodexSubscriber()
+        ? 'Codex API Billing'
+        : 'API Usage Billing'
   const agentName = getInitialSettings().agent
 
   return {
