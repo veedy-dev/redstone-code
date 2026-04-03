@@ -21,8 +21,11 @@
 
 ## Highlights
 
-- **Multi-provider hot-swap** -- Switch between Anthropic, MiniMax, OpenAI Codex, AWS Bedrock, Vertex AI, and any Anthropic-compatible endpoint mid-session via `/login`. No restart needed.
-- **Provider profiles** -- Save and manage multiple API providers. Add a custom endpoint once, switch back and forth with one click.
+- **Multi-provider hot-swap** -- Switch between Anthropic, MiniMax, OpenAI Codex, OpenRouter, Ollama, and any compatible endpoint mid-session via `/login`. No restart needed.
+- **Provider profiles** -- Save and manage multiple API providers. Add a custom endpoint once, switch back and forth with one click. Manage models per provider (add, remove, set default).
+- **Local model support** -- Auto-detect and use local providers like Ollama and LM Studio. No API key required.
+- **OpenAI-compatible endpoints** -- Connect to OpenRouter, Together, Groq, or any OpenAI Chat Completions API with automatic format translation.
+- **models.dev registry** -- Auto-discover provider names and available models from the [models.dev](https://models.dev) community registry (106+ providers).
 - **Zero telemetry** -- All outbound analytics, crash reports, and session fingerprinting are removed at build time.
 - **No prompt guardrails** -- Hardcoded refusal patterns and injected restriction overlays are stripped. The model's own safety training still applies.
 - **54 experimental features unlocked** -- Every feature flag that compiles cleanly is enabled in the full build. See [FEATURES.md](FEATURES.md).
@@ -68,7 +71,7 @@ Then run `redstone-code` and use the `/login` command to authenticate with your 
 
 ## Model Providers
 
-Redstone Code supports **six provider types** out of the box. Use the `/login` command or set environment variables to switch providers.
+Redstone Code supports **eight provider types** out of the box. Use the `/login` command or set environment variables to switch providers.
 
 ### Anthropic (Direct API) -- Default
 
@@ -81,7 +84,7 @@ redstone-code
 
 ### Custom Anthropic-Compatible Endpoints
 
-Any provider that implements the Anthropic Messages API format works out of the box. Examples: [MiniMax](https://platform.minimax.io), or any Anthropic-compatible proxy.
+Any provider that implements the Anthropic Messages API format works out of the box. Examples: [MiniMax](https://platform.minimax.io), [Z.ai (GLM)](https://docs.z.ai), or any Anthropic-compatible proxy.
 
 ```bash
 redstone-code
@@ -96,6 +99,53 @@ export ANTHROPIC_AUTH_TOKEN="your-api-key"
 export ANTHROPIC_MODEL="MiniMax-M2.7"
 redstone-code
 ```
+
+### OpenAI-Compatible Endpoints
+
+Connect to any provider that implements the OpenAI Chat Completions API. Examples: [OpenRouter](https://openrouter.ai), [Together](https://together.ai), [Groq](https://groq.com).
+
+Redstone Code automatically translates between Anthropic and OpenAI API formats via a built-in fetch adapter.
+
+```bash
+redstone-code
+# Then /login > "OpenAI-compatible" > enter base URL, API key, and model name
+```
+
+Or via environment variables:
+
+```bash
+export CLAUDE_CODE_USE_OPENAI=1
+export OPENAI_BASE_URL="https://openrouter.ai/api/v1"
+export OPENAI_API_KEY="your-api-key"
+export OPENAI_MODEL="anthropic/claude-sonnet-4"
+redstone-code
+```
+
+### Local Providers (Ollama, LM Studio)
+
+Run models locally with automatic provider detection. No API key required.
+
+```bash
+# Start Ollama first, then:
+redstone-code
+# Then /login > "Local" > auto-detects Ollama/LM Studio > select a model
+```
+
+Or via environment variables:
+
+```bash
+export CLAUDE_CODE_USE_OPENAI=1
+export OPENAI_BASE_URL="http://localhost:11434/v1"
+export OPENAI_MODEL="llama3.2"
+redstone-code
+```
+
+Supported local providers:
+
+| Provider | Default Port | Model Discovery |
+|---|---|---|
+| [Ollama](https://ollama.com) | `localhost:11434` | Auto (`/api/tags`) |
+| [LM Studio](https://lmstudio.ai) | `localhost:1234` | Auto (`/v1/models`) |
 
 ### OpenAI Codex
 
@@ -151,6 +201,8 @@ redstone-code
 |---|---|---|
 | Anthropic (default) | `/login` | API key or OAuth |
 | Custom endpoint | `/login` > Custom provider | API key |
+| OpenAI-compatible | `/login` > OpenAI-compatible | API key |
+| Local (Ollama/LM Studio) | `/login` > Local | None (auto-detect) |
 | OpenAI Codex | `/login` | OAuth via OpenAI |
 | AWS Bedrock | `CLAUDE_CODE_USE_BEDROCK=1` | AWS credentials |
 | Google Vertex AI | `CLAUDE_CODE_USE_VERTEX=1` | `gcloud` ADC |
@@ -165,10 +217,18 @@ Redstone Code lets you save multiple provider configurations and switch between 
 ### Adding a provider
 
 1. Run `/login`
-2. Select **Custom provider**
-3. Enter the provider name, base URL, and API key
-4. Redstone Code auto-discovers available models (falls back to manual entry)
+2. Select a provider type (Custom provider, OpenAI-compatible, or Local)
+3. Enter the base URL -- Redstone Code auto-detects the provider name and available models from the [models.dev](https://models.dev) registry
+4. Enter the API key (not required for local providers)
 5. The provider is saved and activated immediately
+
+### Managing models
+
+Highlight a saved provider in `/login` and press `e` to manage its models:
+
+- **Add models** -- discovered from the models.dev registry or entered manually
+- **Remove models** -- with confirmation prompt (at least one model must remain)
+- **Set default model** -- press `d` on any model in the list
 
 ### Switching providers
 
@@ -181,21 +241,27 @@ Switch provider or login:
   Anthropic - Default account
 
   Set up new login:
-  1. Subscription account
-  2. Console account (API billing)
-  3. 3rd-party platform (Bedrock, Foundry, Vertex)
-  4. Custom provider (Anthropic-compatible endpoint)
-  5. OpenAI Codex account
+  1. Claude account with subscription
+  2. Anthropic Console account
+  3. Custom provider (Anthropic-compatible)
+  4. OpenAI Codex account
+  5. OpenAI-compatible (OpenRouter, Together, Groq)
+  6. Local (Ollama, LM Studio)
 ```
 
 Select any saved provider to hot-swap mid-session. The API client, model list, and auth are all updated instantly.
 
+### Deleting a provider
+
+Highlight a saved provider and press `Del`. Confirm with `y`. If you delete the active provider, Redstone Code automatically switches back to Anthropic.
+
 ### How it works
 
 - Profiles are stored in `~/.claude/claude.json` under `providerProfiles`
-- The active profile's environment variables (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_MODEL`) are set at runtime
+- Each profile has a `type` field: `'anthropic-compatible'` or `'openai-compatible'`
+- Anthropic-compatible profiles set `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_MODEL`
+- OpenAI-compatible profiles set `CLAUDE_CODE_USE_OPENAI`, `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`
 - Original env vars are stashed and restored when switching back
-- Cached models auto-refresh every 24 hours
 
 ---
 
@@ -203,7 +269,7 @@ Select any saved provider to hot-swap mid-session. The API client, model list, a
 
 - **Runtime**: [Bun](https://bun.sh) >= 1.3.11
 - **OS**: macOS, Linux, or Windows (native or WSL)
-- **Auth**: An API key or OAuth login for your chosen provider
+- **Auth**: An API key or OAuth login for your chosen provider (not required for local providers)
 
 ```bash
 # Install Bun if you don't have it
@@ -271,10 +337,14 @@ bun run dev
 
 | Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | API key |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
 | `ANTHROPIC_AUTH_TOKEN` | Auth token (alternative) |
 | `ANTHROPIC_MODEL` | Override default model |
-| `ANTHROPIC_BASE_URL` | Custom API endpoint |
+| `ANTHROPIC_BASE_URL` | Custom Anthropic-compatible endpoint |
+| `CLAUDE_CODE_USE_OPENAI` | Enable OpenAI-compatible routing (`1`) |
+| `OPENAI_BASE_URL` | OpenAI-compatible endpoint URL |
+| `OPENAI_API_KEY` | OpenAI-compatible API key |
+| `OPENAI_MODEL` | OpenAI-compatible model name |
 | `ANTHROPIC_DEFAULT_OPUS_MODEL` | Custom Opus model ID |
 | `ANTHROPIC_DEFAULT_SONNET_MODEL` | Custom Sonnet model ID |
 | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | Custom Haiku model ID |
@@ -341,12 +411,14 @@ src/
   components/             # Ink/React terminal UI components
   hooks/                  # React hooks
   services/               # API clients, MCP, OAuth
-    api/                  # API client + fetch adapters
+    api/                  # API client + fetch adapters (Codex, OpenAI-compat)
     oauth/                # OAuth flows
   state/                  # App state store
   utils/                  # Utilities
     model/                # Model configs, providers, validation
-    providerProfiles.ts   # Provider profile CRUD, discovery, hot-swap
+    providerProfiles.ts   # Provider profile CRUD, hot-swap
+    modelsRegistry.ts     # models.dev registry integration
+    localProviders.ts     # Local provider auto-detection (Ollama, LM Studio)
   skills/                 # Skill system
   plugins/                # Plugin system
   bridge/                 # IDE bridge
@@ -367,7 +439,7 @@ src/
 | **Schema Validation** | Zod v4 |
 | **Code Search** | ripgrep (bundled) |
 | **Protocols** | MCP, LSP |
-| **APIs** | Anthropic Messages, OpenAI Codex, AWS Bedrock, Google Vertex AI |
+| **APIs** | Anthropic Messages, OpenAI Chat Completions, OpenAI Codex, AWS Bedrock, Google Vertex AI, [models.dev](https://models.dev) |
 
 ---
 
@@ -385,4 +457,4 @@ Contributions are welcome. If you're working on restoring one of the 34 broken f
 
 ## License
 
-This project is based on a publicly available source snapshot. Use at your own discretion.
+This repository is provided for educational and research purposes. The original source code is subject to Anthropic's terms. Use at your own discretion.
