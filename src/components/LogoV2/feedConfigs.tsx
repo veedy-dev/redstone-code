@@ -26,25 +26,19 @@ export function createRecentActivityFeed(activities: LogOption[]): FeedConfig {
 }
 export function createWhatsNewFeed(releaseNotes: string[]): FeedConfig {
   const lines: FeedLine[] = releaseNotes.map(note => {
-    if ("external" === 'ant') {
-      const match = note.match(/^(\d+\s+\w+\s+ago)\s+(.+)$/);
-      if (match) {
-        return {
-          timestamp: match[1],
-          text: match[2] || ''
-        };
-      }
+    const spaceIndex = note.indexOf(' ');
+    if (spaceIndex > 0) {
+      return {
+        timestamp: note.substring(0, spaceIndex),
+        text: note.substring(spaceIndex + 1),
+      };
     }
-    return {
-      text: note
-    };
+    return { text: note };
   });
-  const emptyMessage = "external" === 'ant' ? 'Unable to fetch latest claude-cli-internal commits' : 'Check the Redstone Code changelog for updates';
   return {
-    title: "external" === 'ant' ? "What's new [ANT-ONLY: Latest CC commits]" : "What's new",
+    title: "Recent commits",
     lines,
-    footer: lines.length > 0 ? '/release-notes for more' : undefined,
-    emptyMessage
+    emptyMessage: 'No git commits found',
   };
 }
 export function createProjectOnboardingFeed(steps: Step[]): FeedConfig {
