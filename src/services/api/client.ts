@@ -36,6 +36,7 @@ import {
   isEnvTruthy,
 } from '../../utils/envUtils.js'
 import { createCodexFetch } from './codex-fetch-adapter.js'
+import { createOpenAIFetch } from './openai-fetch-adapter.js'
 
 /**
  * Environment variables for different client types:
@@ -303,6 +304,21 @@ export async function getAnthropicClient({
     }
     // we have always been lying about the return type - this doesn't support batching or models
     return new AnthropicVertex(vertexArgs) as unknown as Anthropic
+  }
+
+  // ── Generic OpenAI-compatible provider via fetch adapter ───────────
+  if (getAPIProvider() === 'openai' && process.env.OPENAI_BASE_URL && !isCodexSubscriber()) {
+    const openAIFetch = createOpenAIFetch(
+      process.env.OPENAI_BASE_URL,
+      process.env.OPENAI_API_KEY,
+    )
+    const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
+      apiKey: 'openai-compat-placeholder',
+      ...ARGS,
+      fetch: openAIFetch as unknown as typeof globalThis.fetch,
+      ...(isDebugToStdErr() && { logger: createStderrLogger() }),
+    }
+    return new Anthropic(clientConfig)
   }
 
   // ── Codex (OpenAI) provider via fetch adapter ─────────────────────

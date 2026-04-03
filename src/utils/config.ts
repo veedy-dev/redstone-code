@@ -183,7 +183,7 @@ export type OutputStyle = string
 export type ProviderProfile = {
   id: string
   name: string
-  type: 'anthropic-compatible'
+  type: 'anthropic-compatible' | 'openai-compatible'
   baseUrl: string
   apiKey: string
   models: string[]

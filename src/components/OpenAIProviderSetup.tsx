@@ -11,13 +11,13 @@ import {
 import { findProviderForUrl } from '../utils/modelsRegistry.js'
 import type { ProviderProfile } from '../utils/config.js'
 
-type SetupStep = 'url' | 'looking_up' | 'name' | 'key' | 'discovering' | 'models_manual' | 'done'
+type SetupStep = 'url' | 'looking_up' | 'name' | 'key' | 'models_manual' | 'done'
 
 type Props = {
   onDone: (profile: ProviderProfile | null) => void
 }
 
-export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
+export function OpenAIProviderSetup({ onDone }: Props): React.ReactNode {
   const [step, setStep] = useState<SetupStep>('url')
   const [name, setName] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
@@ -88,7 +88,7 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
     const profile: ProviderProfile = {
       id: generateProfileId(),
       name,
-      type: 'anthropic-compatible',
+      type: 'openai-compatible',
       baseUrl,
       apiKey: key,
       models: modelList,
@@ -109,15 +109,15 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
     case 'url':
       return (
         <Box flexDirection="column" gap={1}>
-          <Text bold>Set up custom Anthropic-compatible provider</Text>
-          {error && <Text color="red">{error}</Text>}
+          <Text bold>Set up OpenAI-compatible provider</Text>
+          {error && <Text color="error">{error}</Text>}
           <Box>
             <Text>Base URL: </Text>
             <TextInput
               value={baseUrl}
               onChange={setBaseUrl}
               onSubmit={handleUrlSubmit}
-              placeholder="https://api.example.com/v1"
+              placeholder="https://openrouter.ai/api/v1"
               columns={80}
               cursorOffset={cursorOffset}
               onChangeCursorOffset={setCursorOffset}
@@ -130,7 +130,7 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
     case 'looking_up':
       return (
         <Box flexDirection="column" gap={1}>
-          <Text bold>Set up custom Anthropic-compatible provider</Text>
+          <Text bold>Set up OpenAI-compatible provider</Text>
           <Text dimColor>Base URL: {baseUrl}</Text>
           <Box>
             <Spinner />
@@ -142,10 +142,10 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
     case 'name':
       return (
         <Box flexDirection="column" gap={1}>
-          <Text bold>Set up custom Anthropic-compatible provider</Text>
+          <Text bold>Set up OpenAI-compatible provider</Text>
           <Text dimColor>Base URL: {baseUrl}</Text>
           {detectedModels.length > 0 && (
-            <Text color="green">Found {detectedModels.length} model{detectedModels.length !== 1 ? 's' : ''} from models.dev registry</Text>
+            <Text color="success">Found {detectedModels.length} model{detectedModels.length !== 1 ? 's' : ''} from models.dev registry</Text>
           )}
           <Box>
             <Text>Provider name: </Text>
@@ -153,7 +153,7 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
               value={name}
               onChange={setName}
               onSubmit={handleNameSubmit}
-              placeholder="e.g., MiniMax-x.x, GLM-x"
+              placeholder="e.g., OpenRouter, Together, Groq"
               columns={80}
               cursorOffset={cursorOffset}
               onChangeCursorOffset={setCursorOffset}
@@ -185,17 +185,6 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
         </Box>
       )
 
-    case 'discovering':
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text bold>Set up {name}</Text>
-          <Box>
-            <Spinner />
-            <Text> Looking up models...</Text>
-          </Box>
-        </Box>
-      )
-
     case 'models_manual':
       return (
         <Box flexDirection="column" gap={1}>
@@ -207,7 +196,7 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
               value={models}
               onChange={setModels}
               onSubmit={handleModelsSubmit}
-              placeholder="model-name-1, model-name-2"
+              placeholder="gpt-4o, gpt-4o-mini"
               columns={80}
               cursorOffset={cursorOffset}
               onChangeCursorOffset={setCursorOffset}
@@ -220,7 +209,7 @@ export function ProviderSetupForm({ onDone }: Props): React.ReactNode {
     case 'done':
       return (
         <Box flexDirection="column" gap={1}>
-          <Text color="green">Provider "{name}" saved and activated.</Text>
+          <Text color="success">Provider "{name}" saved and activated.</Text>
         </Box>
       )
   }
