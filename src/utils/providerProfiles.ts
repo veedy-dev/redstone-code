@@ -10,6 +10,10 @@ const STASH_KEYS = [
   'ANTHROPIC_API_KEY',
   'ANTHROPIC_AUTH_TOKEN',
   'ANTHROPIC_MODEL',
+  'CLAUDE_CODE_USE_OPENAI',
+  'OPENAI_BASE_URL',
+  'OPENAI_API_KEY',
+  'OPENAI_MODEL',
 ] as const
 
 export function generateProfileId(): string {
@@ -86,12 +90,7 @@ export function restoreStashedEnv(): void {
 
 export function applyProviderProfile(profile: ProviderProfile): void {
   stashCurrentEnv()
-  process.env.ANTHROPIC_BASE_URL = profile.baseUrl
-  process.env.ANTHROPIC_AUTH_TOKEN = profile.apiKey
-  delete process.env.ANTHROPIC_API_KEY
-  if (profile.defaultModel) {
-    process.env.ANTHROPIC_MODEL = profile.defaultModel
-  }
+  setEnvForProfile(profile)
   saveGlobalConfig(config => ({
     ...config,
     activeProviderProfileId: profile.id,
@@ -157,16 +156,39 @@ export function updateProfileLastUsed(id: string): void {
   })
 }
 
-export function initActiveProviderProfile(): void {
-  const profile = getActiveProviderProfile()
-  if (profile) {
-    stashCurrentEnv()
+function setEnvForProfile(profile: ProviderProfile): void {
+  if (profile.type === 'openai-compatible') {
+    process.env.CLAUDE_CODE_USE_OPENAI = '1'
+    process.env.OPENAI_BASE_URL = profile.baseUrl
+    if (profile.apiKey) {
+      process.env.OPENAI_API_KEY = profile.apiKey
+    }
+    if (profile.defaultModel) {
+      process.env.OPENAI_MODEL = profile.defaultModel
+    }
+    delete process.env.ANTHROPIC_BASE_URL
+    delete process.env.ANTHROPIC_API_KEY
+    delete process.env.ANTHROPIC_AUTH_TOKEN
+    delete process.env.ANTHROPIC_MODEL
+  } else {
     process.env.ANTHROPIC_BASE_URL = profile.baseUrl
     process.env.ANTHROPIC_AUTH_TOKEN = profile.apiKey
     delete process.env.ANTHROPIC_API_KEY
     if (profile.defaultModel) {
       process.env.ANTHROPIC_MODEL = profile.defaultModel
     }
+    delete process.env.CLAUDE_CODE_USE_OPENAI
+    delete process.env.OPENAI_BASE_URL
+    delete process.env.OPENAI_API_KEY
+    delete process.env.OPENAI_MODEL
+  }
+}
+
+export function initActiveProviderProfile(): void {
+  const profile = getActiveProviderProfile()
+  if (profile) {
+    stashCurrentEnv()
+    setEnvForProfile(profile)
   }
 }
 

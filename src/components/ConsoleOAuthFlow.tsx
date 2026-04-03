@@ -21,6 +21,8 @@ import TextInput from './TextInput.js';
 import { ProviderSelectList } from './ProviderSelectList.js';
 import { ProviderSetupForm } from './ProviderSetupForm.js';
 import { ProviderModelsForm } from './ProviderModelsForm.js';
+import { LocalProviderSetup } from './LocalProviderSetup.js';
+import { OpenAIProviderSetup } from './OpenAIProviderSetup.js';
 import { getProviderProfiles, getActiveProviderProfileId, applyProviderProfile, deactivateProviderProfile, updateProfileLastUsed, removeProviderProfile } from '../utils/providerProfiles.js';
 type Props = {
   onDone(): void;
@@ -34,9 +36,6 @@ type Props = {
 type OAuthStatus = {
   state: 'idle';
 } // Initial state, waiting to select login method
-| {
-  state: 'platform_setup';
-} // Show platform setup info (Bedrock/Vertex/Foundry)
 | {
   state: 'ready_to_start';
 } // Flow started, waiting for browser to open
@@ -64,6 +63,10 @@ type OAuthStatus = {
 } | {
   state: 'provider_models';
   profileId: string;
+} | {
+  state: 'local_setup';
+} | {
+  state: 'openai_setup';
 };
 const PASTE_HERE_MSG = 'Paste code here if prompted > ';
 export function ConsoleOAuthFlow({
@@ -186,16 +189,6 @@ export function ConsoleOAuthFlow({
   }, {
     context: 'Confirmation',
     isActive: oauthStatus.state === 'success' && mode !== 'setup-token'
-  });
-
-  // Handle Enter to continue from platform setup
-  useKeybinding('confirm:yes', () => {
-    setOAuthStatus({
-      state: 'idle'
-    });
-  }, {
-    context: 'Confirmation',
-    isActive: oauthStatus.state === 'platform_setup'
   });
 
   // Handle Enter to retry on error state
@@ -394,7 +387,7 @@ export function ConsoleOAuthFlow({
   }, [oauthService]);
   useEffect(() => {
     if (onTextInputActive) {
-      onTextInputActive(oauthStatus.state === 'provider_setup' || modelsTextInputActive);
+      onTextInputActive(oauthStatus.state === 'provider_setup' || oauthStatus.state === 'openai_setup' || oauthStatus.state === 'local_setup' || modelsTextInputActive);
     }
   }, [oauthStatus.state, onTextInputActive, modelsTextInputActive]);
   return <Box flexDirection="column" gap={1}>
@@ -528,16 +521,20 @@ function OAuthStatusMessage(t0) {
           value: "console"
         });
         t6.push({
-          label: <Text>3rd-party platform ·{" "}<Text dimColor={true}>Amazon Bedrock, Microsoft Foundry, or Vertex AI</Text>{"\n"}</Text>,
-          value: "platform"
-        });
-        t6.push({
           label: <Text>Custom provider ·{" "}<Text dimColor={true}>{_hasProfiles ? "Add new Anthropic-compatible endpoint" : "Anthropic-compatible endpoint (e.g., MiniMax, Z.ai)"}</Text>{"\n"}</Text>,
           value: "custom_provider"
         });
         t6.push({
           label: <Text>OpenAI Codex account ·{" "}<Text dimColor={true}>ChatGPT Plus/Pro subscription</Text>{"\n"}</Text>,
           value: "codex"
+        });
+        t6.push({
+          label: <Text>OpenAI-compatible ·{" "}<Text dimColor={true}>OpenRouter, Together, Groq, etc.</Text>{"\n"}</Text>,
+          value: "openai_compat"
+        });
+        t6.push({
+          label: <Text>Local ·{" "}<Text dimColor={true}>Ollama, LM Studio, or custom local endpoint</Text>{"\n"}</Text>,
+          value: "local"
         });
         const t7 = <Box><Select options={t6} onChange={value_0 => {
               if (value_0 === "__anthropic__") {
@@ -554,14 +551,13 @@ function OAuthStatusMessage(t0) {
                 onDone();
                 return;
               }
-              if (value_0 === "platform") {
-                logEvent("tengu_oauth_platform_selected", {});
-                setOAuthStatus({ state: "platform_setup" });
-                return;
-              }
               if (value_0 === "custom_provider") {
                 logEvent("tengu_oauth_custom_provider_selected", {});
                 setOAuthStatus({ state: "provider_setup" });
+              } else if (value_0 === "openai_compat") {
+                setOAuthStatus({ state: "openai_setup" });
+              } else if (value_0 === "local") {
+                setOAuthStatus({ state: "local_setup" });
               } else if (value_0 === "codex") {
                 logEvent("tengu_oauth_codex_selected", {});
                 setLoginWithCodex(true);
@@ -609,63 +605,22 @@ function OAuthStatusMessage(t0) {
         onDone={() => { setModelsTextInputActive(false); setOAuthStatus({ state: 'idle' }); }}
         onTextInputActive={setModelsTextInputActive}
       />;
-    case "platform_setup":
-      {
-        let t1;
-        if ($[13] === Symbol.for("react.memo_cache_sentinel")) {
-          t1 = <Text bold={true}>Using 3rd-party platforms</Text>;
-          $[13] = t1;
+    case "local_setup":
+      return <LocalProviderSetup onDone={(profile) => {
+        if (profile) {
+          onDone();
         } else {
-          t1 = $[13];
+          setOAuthStatus({ state: 'idle' });
         }
-        let t2;
-        let t3;
-        if ($[14] === Symbol.for("react.memo_cache_sentinel")) {
-          t2 = <Text>Claude Code supports Amazon Bedrock, Microsoft Foundry, and Vertex AI. Set the required environment variables, then restart Claude Code.</Text>;
-          t3 = <Text>If you are part of an enterprise organization, contact your administrator for setup instructions.</Text>;
-          $[14] = t2;
-          $[15] = t3;
+      }} />;
+    case "openai_setup":
+      return <OpenAIProviderSetup onDone={(profile) => {
+        if (profile) {
+          onDone();
         } else {
-          t2 = $[14];
-          t3 = $[15];
+          setOAuthStatus({ state: 'idle' });
         }
-        let t4;
-        if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
-          t4 = <Text bold={true}>Documentation:</Text>;
-          $[16] = t4;
-        } else {
-          t4 = $[16];
-        }
-        let t5;
-        if ($[17] === Symbol.for("react.memo_cache_sentinel")) {
-          t5 = <Text>· Amazon Bedrock:{" "}<Link url="https://code.claude.com/docs/en/amazon-bedrock">https://code.claude.com/docs/en/amazon-bedrock</Link></Text>;
-          $[17] = t5;
-        } else {
-          t5 = $[17];
-        }
-        let t6;
-        if ($[18] === Symbol.for("react.memo_cache_sentinel")) {
-          t6 = <Text>· Microsoft Foundry:{" "}<Link url="https://code.claude.com/docs/en/microsoft-foundry">https://code.claude.com/docs/en/microsoft-foundry</Link></Text>;
-          $[18] = t6;
-        } else {
-          t6 = $[18];
-        }
-        let t7;
-        if ($[19] === Symbol.for("react.memo_cache_sentinel")) {
-          t7 = <Box flexDirection="column" marginTop={1}>{t4}{t5}{t6}<Text>· Vertex AI:{" "}<Link url="https://code.claude.com/docs/en/google-vertex-ai">https://code.claude.com/docs/en/google-vertex-ai</Link></Text></Box>;
-          $[19] = t7;
-        } else {
-          t7 = $[19];
-        }
-        let t8;
-        if ($[20] === Symbol.for("react.memo_cache_sentinel")) {
-          t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t1}<Box flexDirection="column" gap={1}>{t2}{t3}{t7}<Box marginTop={1}><Text dimColor={true}>Press <Text bold={true}>Enter</Text> to go back to login options.</Text></Box></Box></Box>;
-          $[20] = t8;
-        } else {
-          t8 = $[20];
-        }
-        return t8;
-      }
+      }} />;
     case "waiting_for_login":
       {
         let t1;
