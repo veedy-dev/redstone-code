@@ -31,6 +31,7 @@ export function LocalProviderSetup({ onDone }: Props): React.ReactNode {
   const [manualUrl, setManualUrl] = useState('')
   const [manualModel, setManualModel] = useState('')
   const [cursorOffset, setCursorOffset] = useState(0)
+  const [error, setError] = useState<string | null>(null)
 
   useInput((_input, key) => {
     if (!key.escape) return
@@ -166,6 +167,7 @@ export function LocalProviderSetup({ onDone }: Props): React.ReactNode {
         <Box flexDirection="column" gap={1}>
           <Text bold>Set up local provider</Text>
           <Text dimColor>No local providers detected automatically.</Text>
+          {error && <Text color="error">{error}</Text>}
           <Box>
             <Text>Base URL: </Text>
             <TextInput
@@ -173,6 +175,13 @@ export function LocalProviderSetup({ onDone }: Props): React.ReactNode {
               onChange={setManualUrl}
               onSubmit={(value: string) => {
                 if (!value.trim()) return
+                try {
+                  new URL(value.trim())
+                } catch {
+                  setError('Invalid URL format')
+                  return
+                }
+                setError(null)
                 setManualUrl(value.trim())
                 setCursorOffset(0)
                 setStep('manual_model')
