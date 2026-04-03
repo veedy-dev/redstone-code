@@ -20,6 +20,7 @@ import { Spinner } from './Spinner.js';
 import TextInput from './TextInput.js';
 import { ProviderSelectList } from './ProviderSelectList.js';
 import { ProviderSetupForm } from './ProviderSetupForm.js';
+import { ProviderModelsForm } from './ProviderModelsForm.js';
 import { getProviderProfiles, getActiveProviderProfileId, applyProviderProfile, deactivateProviderProfile, updateProfileLastUsed, removeProviderProfile } from '../utils/providerProfiles.js';
 type Props = {
   onDone(): void;
@@ -60,6 +61,9 @@ type OAuthStatus = {
   state: 'provider_select';
 } | {
   state: 'provider_setup';
+} | {
+  state: 'provider_models';
+  profileId: string;
 };
 const PASTE_HERE_MSG = 'Paste code here if prompted > ';
 export function ConsoleOAuthFlow({
@@ -113,9 +117,13 @@ export function ConsoleOAuthFlow({
     if (pendingDeleteId) {
       event.stopImmediatePropagation();
       if (input === 'y' || input === 'Y') {
+        const wasActive = getActiveProviderProfileId() === pendingDeleteId;
         removeProviderProfile(pendingDeleteId);
         setFocusedValue(null);
         setPendingDeleteId(null);
+        if (wasActive) {
+          onDone();
+        }
       } else if (input === 'n' || input === 'N' || key.escape) {
         setPendingDeleteId(null);
       }
@@ -126,6 +134,13 @@ export function ConsoleOAuthFlow({
       if (profiles.some(p => p.id === focusedValue)) {
         event.stopImmediatePropagation();
         setPendingDeleteId(focusedValue);
+      }
+    }
+    if (input === 'e' && focusedValue) {
+      const profiles = getProviderProfiles();
+      if (profiles.some(p => p.id === focusedValue)) {
+        event.stopImmediatePropagation();
+        setOAuthStatus({ state: 'provider_models', profileId: focusedValue });
       }
     }
   }, { isActive: oauthStatus.state === 'idle' });
@@ -378,7 +393,7 @@ export function ConsoleOAuthFlow({
   }, [oauthService]);
   useEffect(() => {
     if (onTextInputActive) {
-      onTextInputActive(oauthStatus.state === 'provider_setup');
+      onTextInputActive(oauthStatus.state === 'provider_setup' || oauthStatus.state === 'provider_models');
     }
   }, [oauthStatus.state, onTextInputActive]);
   return <Box flexDirection="column" gap={1}>
@@ -516,7 +531,7 @@ function OAuthStatusMessage(t0) {
           value: "platform"
         });
         t6.push({
-          label: <Text>Custom provider ·{" "}<Text dimColor={true}>{_hasProfiles ? "Add new Anthropic-compatible endpoint" : "Anthropic-compatible endpoint (e.g., MiniMax)"}</Text>{"\n"}</Text>,
+          label: <Text>Custom provider ·{" "}<Text dimColor={true}>{_hasProfiles ? "Add new Anthropic-compatible endpoint" : "Anthropic-compatible endpoint (e.g., MiniMax, Z.ai)"}</Text>{"\n"}</Text>,
           value: "custom_provider"
         });
         t6.push({
@@ -525,7 +540,9 @@ function OAuthStatusMessage(t0) {
         });
         const t7 = <Box><Select options={t6} onChange={value_0 => {
               if (value_0 === "__anthropic__") {
-                deactivateProviderProfile();
+                if (getActiveProviderProfileId()) {
+                  deactivateProviderProfile();
+                }
                 onDone();
                 return;
               }
@@ -562,9 +579,9 @@ function OAuthStatusMessage(t0) {
                   setLoginWithClaudeAi(false);
                 }
               }
-            }} onFocus={onFocusProfile} /></Box>;
+            }} onFocus={onFocusProfile} isDisabled={!!pendingDeleteId} /></Box>;
         const _pendingProfile = pendingDeleteId ? _profiles.find(p => p.id === pendingDeleteId) : null;
-        const t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t2}{t3}{t7}{_pendingProfile && <Text><Text color="red">Delete</Text> "<Text color="cyan">{_pendingProfile.name}</Text>"? (y/n)</Text>}</Box>;
+        const t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t2}{t3}{t7}{_pendingProfile && <Text><Text color="error">Delete</Text> "<Text bold>{_pendingProfile.name}</Text>"? (y/n)</Text>}</Box>;
         return t8;
       }
     case "provider_select":
@@ -585,6 +602,11 @@ function OAuthStatusMessage(t0) {
           setOAuthStatus({ state: 'idle' });
         }
       }} />;
+    case "provider_models":
+      return <ProviderModelsForm
+        profileId={oauthStatus.profileId}
+        onDone={() => setOAuthStatus({ state: 'idle' })}
+      />;
     case "platform_setup":
       {
         let t1;
